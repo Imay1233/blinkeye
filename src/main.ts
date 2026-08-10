@@ -6,10 +6,14 @@ const appWindow = getCurrentWindow();
 
 window.addEventListener("DOMContentLoaded", () => {
   const widget = document.getElementById("widget");
+  const hoverArea = document.getElementById("hover-area");
   const eye = document.getElementById("eye") as HTMLImageElement;
 
+  let isHovered = false;
+  let isWiggling = false;
+
   /*
-    DRAGGING
+  DRAGGING
   */
 
   widget?.addEventListener("mousedown", async (event) => {
@@ -18,18 +22,16 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-
   /*
-    DISABLE RIGHT-CLICK MENU
+  DISABLE RIGHT-CLICK MENU
   */
 
   document.addEventListener("contextmenu", (event) => {
     event.preventDefault();
   });
 
-
   /*
-    BLINKING
+  BLINKING
   */
 
   async function blink() {
@@ -42,19 +44,17 @@ window.addEventListener("DOMContentLoaded", () => {
     eye.src = "/src/assets/eye-open.svg";
   }
 
-
   function randomDelay(min: number, max: number) {
     return Math.floor(
       Math.random() * (max - min + 1) + min
     );
   }
 
-
   async function blinkLoop() {
     while (true) {
       /*
         Wait a random amount of time before blinking.
-  
+
         For now:
         3 to 8 seconds.
       */
@@ -65,17 +65,15 @@ window.addEventListener("DOMContentLoaded", () => {
         setTimeout(resolve, delay);
       });
 
-
       /*
         Normal blink.
       */
 
       await blink();
 
-
       /*
         Occasionally perform a second blink shortly afterward.
-  
+
         20% chance for now.
       */
 
@@ -90,4 +88,57 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   blinkLoop();
+
+  /*
+  HOVER
+  */
+
+  hoverArea?.addEventListener("mouseenter", () => {
+    isHovered = true;
+
+    /*
+      If the wiggle is currently happening,
+      stop it immediately.
+    */
+
+    if (isWiggling) {
+      hoverArea.classList.remove("wiggle");
+      isWiggling = false;
+    }
+  });
+
+  hoverArea?.addEventListener("mouseleave", () => {
+    isHovered = false;
+  });
+
+  /*
+  WIGGLE
+  */
+
+  const WIGGLE_INTERVAL = 10_000; // 10 seconds for testing
+
+  setInterval(() => {
+    /*
+      Don't wiggle while the user is hovering.
+      Don't start another wiggle if one is already running.
+    */
+
+    if (isHovered || isWiggling) {
+      return;
+    }
+
+    isWiggling = true;
+
+    hoverArea?.classList.add("wiggle");
+  }, WIGGLE_INTERVAL);
+
+  /*
+  When the CSS animation finishes,
+  clean up the class and allow another wiggle.
+  */
+
+  hoverArea?.addEventListener("animationend", () => {
+    hoverArea.classList.remove("wiggle");
+    isWiggling = false;
+  });
 });
