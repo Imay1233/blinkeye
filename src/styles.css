@@ -91,5 +91,5 @@ WIGGLE ANIMATION
 }
 
 #hover-area.wiggle {
-  animation: wiggle 1.4s ease-out;
+  animation: wiggle 1.0s ease-out 2;
 }
