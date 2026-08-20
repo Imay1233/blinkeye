@@ -30,7 +30,6 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   const widget = document.getElementById("widget");
   const hoverArea = document.getElementById("hover-area");
-  const eye = document.getElementById("eye") as HTMLImageElement;
 
   let isHovered = false;
   let isWiggling = false;
@@ -150,13 +149,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   async function blink() {
     triggerWiggle();
 
-    eye.src = "/src/assets/eye-closed.svg";
+    hoverArea?.classList.add("closed");
 
     await new Promise((resolve) => {
       setTimeout(resolve, 160);
     });
 
-    eye.src = "/src/assets/eye-open.svg";
+    hoverArea?.classList.remove("closed");
   }
 
   function randomDelay(min: number, max: number) {

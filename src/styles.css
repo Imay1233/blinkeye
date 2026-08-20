@@ -1,3 +1,9 @@
+:root {
+  --eye-color: #ffffff;
+  --eye-outline-color: #000000;
+  --eye-outline-width: 4px;
+}
+
 html,
 body {
   margin: 0;
@@ -32,14 +38,35 @@ body {
     box-shadow 200ms ease;
 }
 
-#eye {
+.eye-svg {
   display: block;
-
   width: 180px;
+  height: auto;
+  overflow: visible;
 
   user-select: none;
-
   -webkit-user-drag: none;
+}
+
+.eye-svg path {
+  fill: var(--eye-color);
+  stroke: var(--eye-outline-color);
+  stroke-width: var(--eye-outline-width);
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  paint-order: stroke fill;
+}
+
+#eye-closed {
+  display: none;
+}
+
+#hover-area.closed #eye-open {
+  display: none;
+}
+
+#hover-area.closed #eye-closed {
+  display: block;
 }
 
 #hover-area:hover {
