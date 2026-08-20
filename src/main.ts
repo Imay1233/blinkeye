@@ -107,10 +107,32 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 
   /*
+  WIGGLE
+  */
+
+  function triggerWiggle() {
+    /*
+      Don't wiggle while the user is hovering.
+    */
+
+    if (isHovered || !hoverArea) {
+      return;
+    }
+
+    isWiggling = true;
+
+    hoverArea.classList.remove("wiggle");
+    void hoverArea.offsetWidth;
+    hoverArea.classList.add("wiggle");
+  }
+
+  /*
   BLINKING
   */
 
   async function blink() {
+    triggerWiggle();
+
     eye.src = "/src/assets/eye-closed.svg";
 
     await new Promise((resolve) => {
@@ -186,27 +208,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   hoverArea?.addEventListener("mouseleave", () => {
     isHovered = false;
   });
-
-  /*
-  WIGGLE
-  */
-
-  const WIGGLE_INTERVAL = 10_000; // 10 seconds for testing
-
-  setInterval(() => {
-    /*
-      Don't wiggle while the user is hovering.
-      Don't start another wiggle if one is already running.
-    */
-
-    if (isHovered || isWiggling) {
-      return;
-    }
-
-    isWiggling = true;
-
-    hoverArea?.classList.add("wiggle");
-  }, WIGGLE_INTERVAL);
 
   /*
   When the CSS animation finishes,
