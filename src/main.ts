@@ -1,5 +1,6 @@
 import "./styles.css";
 
+import { invoke } from "@tauri-apps/api/core";
 import {
   getCurrentWindow,
   currentMonitor,
@@ -73,19 +74,35 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  let moveTimer: ReturnType<typeof setTimeout> | null = null;
+  let checkInterval: ReturnType<typeof setInterval> | null = null;
 
-  appWindow.onMoved(() => {
-    if (moveTimer) {
-      clearTimeout(moveTimer);
+  function scheduleKeepWindowOnScreen() {
+    if (checkInterval) {
+      clearInterval(checkInterval);
     }
 
-    moveTimer = setTimeout(async () => {
-      await keepWindowOnScreen();
-    }, 150);
+    checkInterval = setInterval(async () => {
+      try {
+        const isDown = await invoke<boolean>("is_mouse_down");
+        if (!isDown) {
+          if (checkInterval) {
+            clearInterval(checkInterval);
+            checkInterval = null;
+          }
+          await keepWindowOnScreen();
+        }
+      } catch {
+        if (checkInterval) {
+          clearInterval(checkInterval);
+          checkInterval = null;
+        }
+      }
+    }, 40);
+  }
+
+  appWindow.onMoved(() => {
+    scheduleKeepWindowOnScreen();
   });
-
-
 
   /*
   DRAGGING
@@ -93,8 +110,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   widget?.addEventListener("mousedown", async (event) => {
     if (event.button === 0) {
+      scheduleKeepWindowOnScreen();
       await appWindow.startDragging();
-
     }
   });
 
