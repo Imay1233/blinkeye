@@ -6,7 +6,7 @@ import {
   currentMonitor,
 } from "@tauri-apps/api/window";
 
-import { PhysicalPosition } from "@tauri-apps/api/dpi";
+import { PhysicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 
 const appWindow = getCurrentWindow();
 
@@ -30,9 +30,51 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   const widget = document.getElementById("widget");
   const hoverArea = document.getElementById("hover-area");
+  const settingsToggle = document.getElementById("settings-toggle");
+
+  const NORMAL_WIDTH = 260;
+  const NORMAL_HEIGHT = 260;
+  const EXPANDED_WIDTH = 580;
+  const EXPANDED_HEIGHT = 260;
 
   let isHovered = false;
   let isWiggling = false;
+  let isSettingsOpen = false;
+
+  /*
+  SETTINGS TOGGLE
+  */
+
+  async function toggleSettings() {
+    if (isSettingsOpen) {
+      isSettingsOpen = false;
+      widget?.classList.remove("settings-open");
+
+      setTimeout(async () => {
+        if (!isSettingsOpen) {
+          await appWindow.setSize(new LogicalSize(NORMAL_WIDTH, NORMAL_HEIGHT));
+          await keepWindowOnScreen();
+        }
+      }, 280);
+    } else {
+      isSettingsOpen = true;
+
+      if (isWiggling && hoverArea) {
+        hoverArea.classList.remove("wiggle");
+        isWiggling = false;
+      }
+
+      await appWindow.setSize(new LogicalSize(EXPANDED_WIDTH, EXPANDED_HEIGHT));
+      await keepWindowOnScreen();
+
+      widget?.classList.add("settings-open");
+    }
+  }
+
+  settingsToggle?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleSettings();
+  });
 
   /*
   Keep app on screen
@@ -108,6 +150,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   */
 
   widget?.addEventListener("mousedown", async (event) => {
+    if ((event.target as HTMLElement)?.closest("#settings-toggle, #settings-panel")) {
+      return;
+    }
+
     if (event.button === 0) {
       scheduleKeepWindowOnScreen();
       await appWindow.startDragging();
@@ -128,10 +174,10 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   function triggerWiggle() {
     /*
-      Don't wiggle while the user is hovering.
+      Don't wiggle while the user is hovering or when settings are open.
     */
 
-    if (isHovered || !hoverArea) {
+    if (isHovered || isSettingsOpen || !hoverArea) {
       return;
     }
 
