@@ -63,7 +63,117 @@
       </div>
 
       <div id="settings-panel">
-        <!-- Settings content placeholder -->
+        <div class="settings-header">
+          <span class="settings-title">Settings</span>
+        </div>
+
+        <div class="settings-body">
+          <!-- Eye Color Group -->
+          <div class="settings-group">
+            <div class="setting-row">
+              <span class="setting-label">Eye Color</span>
+              <div class="color-picker-row" id="eye-color-group">
+                <button type="button" class="color-swatch active" data-color="#ffffff" style="--swatch-color: #ffffff;" aria-label="White"></button>
+                <button type="button" class="color-swatch" data-color="#e0e0e0" style="--swatch-color: #e0e0e0;" aria-label="Light Gray"></button>
+                <button type="button" class="color-swatch" data-color="#707070" style="--swatch-color: #707070;" aria-label="Medium Gray"></button>
+                <button type="button" class="color-swatch" data-color="#1c1c1c" style="--swatch-color: #1c1c1c;" aria-label="Dark Gray"></button>
+                <button type="button" class="color-swatch" data-color="#00e5ff" style="--swatch-color: #00e5ff;" aria-label="Cyan"></button>
+                <button type="button" class="color-swatch" data-color="#00e676" style="--swatch-color: #00e676;" aria-label="Green"></button>
+                <button type="button" class="color-swatch" data-color="#ff9100" style="--swatch-color: #ff9100;" aria-label="Amber"></button>
+                <button type="button" class="color-swatch" data-color="#d500f9" style="--swatch-color: #d500f9;" aria-label="Purple"></button>
+                <label class="custom-color-btn" title="Custom Eye Color">
+                  <input type="color" id="eye-custom-color" value="#ffffff" />
+                  <span class="custom-color-indicator" id="eye-custom-indicator"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Outline Group -->
+          <div class="settings-group">
+            <div class="setting-row-split">
+              <div class="setting-toggle-item">
+                <span class="setting-label">Outline</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="outline-toggle" checked />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+
+              <label class="checkbox-label" id="match-color-container">
+                <input type="checkbox" id="match-outline-toggle" />
+                <span class="checkbox-text">Link to eye</span>
+              </label>
+            </div>
+
+            <div class="setting-row" id="outline-color-row">
+              <span class="setting-sublabel">Outline Color</span>
+              <div class="color-picker-row" id="outline-color-group">
+                <button type="button" class="color-swatch" data-color="#ffffff" style="--swatch-color: #ffffff;" aria-label="White"></button>
+                <button type="button" class="color-swatch" data-color="#e0e0e0" style="--swatch-color: #e0e0e0;" aria-label="Light Gray"></button>
+                <button type="button" class="color-swatch" data-color="#707070" style="--swatch-color: #707070;" aria-label="Medium Gray"></button>
+                <button type="button" class="color-swatch active" data-color="#2f2f2f" style="--swatch-color: #2f2f2f;" aria-label="Charcoal"></button>
+                <button type="button" class="color-swatch" data-color="#000000" style="--swatch-color: #000000;" aria-label="Black"></button>
+                <button type="button" class="color-swatch" data-color="#00e5ff" style="--swatch-color: #00e5ff;" aria-label="Cyan"></button>
+                <button type="button" class="color-swatch" data-color="#00e676" style="--swatch-color: #00e676;" aria-label="Green"></button>
+                <button type="button" class="color-swatch" data-color="#ff9100" style="--swatch-color: #ff9100;" aria-label="Amber"></button>
+                <label class="custom-color-btn" title="Custom Outline Color">
+                  <input type="color" id="outline-custom-color" value="#2f2f2f" />
+                  <span class="custom-color-indicator" id="outline-custom-indicator"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Behavior Group -->
+          <div class="settings-group">
+            <div class="setting-row-inline">
+              <div class="setting-col-toggle">
+                <span class="setting-label">Wiggle</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="wiggle-toggle" checked />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+
+              <div class="setting-col-segment">
+                <span class="setting-label">Blink Speed</span>
+                <div class="segmented-control" id="blink-speed-control">
+                  <button type="button" class="segment-btn" data-speed="relaxed">Relaxed</button>
+                  <button type="button" class="segment-btn active" data-speed="normal">Normal</button>
+                  <button type="button" class="segment-btn" data-speed="active">Active</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Scale Group -->
+          <div class="settings-group">
+            <div class="setting-row">
+              <div class="scale-header">
+                <span class="setting-label">Eye Scale</span>
+                <span class="scale-val" id="scale-val-label">1.0x</span>
+              </div>
+              <div class="segmented-control scale-control" id="scale-control">
+                <button type="button" class="segment-btn" data-scale="0.5">0.5x</button>
+                <button type="button" class="segment-btn" data-scale="0.75">0.75x</button>
+                <button type="button" class="segment-btn active" data-scale="1.0">1.0x</button>
+                <button type="button" class="segment-btn" data-scale="1.5">1.5x</button>
+                <button type="button" class="segment-btn" data-scale="2.0">2.0x</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-footer">
+          <button type="button" id="reset-settings-btn" class="reset-btn">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+              <path d="M3 3v5h5" />
+            </svg>
+            Reset to Defaults
+          </button>
+        </div>
       </div>
     </div>
   </body>

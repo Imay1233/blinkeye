@@ -10,36 +10,236 @@ import { PhysicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 
 const appWindow = getCurrentWindow();
 
+interface AppSettings {
+  eyeColor: string;
+  outlineColor: string;
+  outlineEnabled: boolean;
+  matchOutlineColor: boolean;
+  wiggleEnabled: boolean;
+  blinkSpeed: "relaxed" | "normal" | "active";
+  scale: number;
+}
+
+const DEFAULT_SETTINGS: AppSettings = {
+  eyeColor: "#ffffff",
+  outlineColor: "#2f2f2f",
+  outlineEnabled: true,
+  matchOutlineColor: false,
+  wiggleEnabled: true,
+  blinkSpeed: "normal",
+  scale: 1.0,
+};
+
+function loadSettings(): AppSettings {
+  try {
+    const saved = localStorage.getItem("blinkeye_settings");
+    if (saved) {
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+    }
+  } catch (e) {
+    console.error("Failed to load settings from localStorage", e);
+  }
+  return { ...DEFAULT_SETTINGS };
+}
+
+function saveSettings(settings: AppSettings) {
+  try {
+    localStorage.setItem("blinkeye_settings", JSON.stringify(settings));
+  } catch (e) {
+    console.error("Failed to save settings to localStorage", e);
+  }
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
+  let settings: AppSettings = loadSettings();
+
   /*
   Get the monitor where the widget is located.
   */
 
   const monitor = await currentMonitor();
-
-  const width = monitor?.size.width || 0;
-  const height = monitor?.size.height || 0;
+  const screenWidth = monitor?.size.width || 0;
+  const screenHeight = monitor?.size.height || 0;
 
   /*
   Center the widget on the screen.
   */
 
   await appWindow.setPosition(
-    new PhysicalPosition(width / 2 - 50, height / 2 - 50)
+    new PhysicalPosition(screenWidth / 2 - 130, screenHeight / 2 - 130)
   );
 
   const widget = document.getElementById("widget");
   const hoverArea = document.getElementById("hover-area");
   const settingsToggle = document.getElementById("settings-toggle");
 
-  const NORMAL_WIDTH = 260;
-  const NORMAL_HEIGHT = 260;
-  const EXPANDED_WIDTH = 580;
-  const EXPANDED_HEIGHT = 260;
+  // Setting Elements
+  const eyeColorGroup = document.getElementById("eye-color-group");
+  const eyeCustomColor = document.getElementById("eye-custom-color") as HTMLInputElement;
+  const eyeCustomIndicator = document.getElementById("eye-custom-indicator");
+
+  const outlineToggle = document.getElementById("outline-toggle") as HTMLInputElement;
+  const matchOutlineToggle = document.getElementById("match-outline-toggle") as HTMLInputElement;
+  const outlineColorRow = document.getElementById("outline-color-row");
+  const outlineColorGroup = document.getElementById("outline-color-group");
+  const outlineCustomColor = document.getElementById("outline-custom-color") as HTMLInputElement;
+  const outlineCustomIndicator = document.getElementById("outline-custom-indicator");
+
+  const wiggleToggle = document.getElementById("wiggle-toggle") as HTMLInputElement;
+  const blinkSpeedControl = document.getElementById("blink-speed-control");
+  const scaleControl = document.getElementById("scale-control");
+  const scaleValLabel = document.getElementById("scale-val-label");
+  const resetSettingsBtn = document.getElementById("reset-settings-btn");
 
   let isHovered = false;
   let isWiggling = false;
   let isSettingsOpen = false;
+
+  function getWindowSizes(scale: number) {
+    const BASE_CARD = 260;
+    const normalWidth = Math.round(BASE_CARD * scale);
+    const normalHeight = Math.round(BASE_CARD * scale);
+
+    const SETTINGS_PANEL_WIDTH = 380;
+    const expandedWidth = Math.round((BASE_CARD * scale) + SETTINGS_PANEL_WIDTH);
+    const expandedHeight = Math.max(normalHeight, 350);
+
+    return { normalWidth, normalHeight, expandedWidth, expandedHeight };
+  }
+
+  async function updateWindowSize() {
+    const sizes = getWindowSizes(settings.scale);
+    if (isSettingsOpen) {
+      await appWindow.setSize(new LogicalSize(sizes.expandedWidth, sizes.expandedHeight));
+    } else {
+      await appWindow.setSize(new LogicalSize(sizes.normalWidth, sizes.normalHeight));
+    }
+    await keepWindowOnScreen();
+  }
+
+  function applySettingsToDOM(updateUI: boolean = true) {
+    const root = document.documentElement;
+
+    const activeOutlineColor = settings.matchOutlineColor
+      ? settings.eyeColor
+      : settings.outlineColor;
+
+    root.style.setProperty("--eye-color", settings.eyeColor);
+    root.style.setProperty("--eye-outline-color", activeOutlineColor);
+    root.style.setProperty(
+      "--eye-outline-width",
+      settings.outlineEnabled ? "4px" : "0px"
+    );
+    root.style.setProperty("--eye-scale", settings.scale.toString());
+
+    if (eyeCustomIndicator) {
+      eyeCustomIndicator.style.backgroundColor = settings.eyeColor;
+    }
+    if (outlineCustomIndicator) {
+      outlineCustomIndicator.style.backgroundColor = activeOutlineColor;
+    }
+
+    if (!updateUI) return;
+
+    // 1. Eye color swatches
+    eyeColorGroup?.querySelectorAll(".color-swatch").forEach((btn) => {
+      const color = (btn as HTMLElement).dataset.color;
+      if (color?.toLowerCase() === settings.eyeColor.toLowerCase()) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+
+    const eyeCustomBtn = eyeCustomColor?.closest(".custom-color-btn");
+    const eyeMatchesPreset = Array.from(
+      eyeColorGroup?.querySelectorAll(".color-swatch") || []
+    ).some(
+      (b) => (b as HTMLElement).dataset.color?.toLowerCase() === settings.eyeColor.toLowerCase()
+    );
+    if (!eyeMatchesPreset && eyeCustomBtn) {
+      eyeCustomBtn.classList.add("active");
+    } else if (eyeCustomBtn) {
+      eyeCustomBtn.classList.remove("active");
+    }
+    if (eyeCustomColor) {
+      eyeCustomColor.value = settings.eyeColor;
+    }
+
+    // 2. Outline controls
+    if (outlineToggle) {
+      outlineToggle.checked = settings.outlineEnabled;
+    }
+    if (matchOutlineToggle) {
+      matchOutlineToggle.checked = settings.matchOutlineColor;
+    }
+
+    if (outlineColorRow) {
+      if (!settings.outlineEnabled || settings.matchOutlineColor) {
+        outlineColorRow.classList.add("disabled");
+      } else {
+        outlineColorRow.classList.remove("disabled");
+      }
+    }
+
+    // 3. Outline color swatches
+    outlineColorGroup?.querySelectorAll(".color-swatch").forEach((btn) => {
+      const color = (btn as HTMLElement).dataset.color;
+      if (color?.toLowerCase() === settings.outlineColor.toLowerCase()) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+
+    const outlineCustomBtn = outlineCustomColor?.closest(".custom-color-btn");
+    const outlineMatchesPreset = Array.from(
+      outlineColorGroup?.querySelectorAll(".color-swatch") || []
+    ).some(
+      (b) => (b as HTMLElement).dataset.color?.toLowerCase() === settings.outlineColor.toLowerCase()
+    );
+    if (!outlineMatchesPreset && outlineCustomBtn) {
+      outlineCustomBtn.classList.add("active");
+    } else if (outlineCustomBtn) {
+      outlineCustomBtn.classList.remove("active");
+    }
+    if (outlineCustomColor) {
+      outlineCustomColor.value = settings.outlineColor;
+    }
+
+    // 4. Wiggle toggle
+    if (wiggleToggle) {
+      wiggleToggle.checked = settings.wiggleEnabled;
+    }
+
+    // 5. Blink speed segments
+    blinkSpeedControl?.querySelectorAll(".segment-btn").forEach((btn) => {
+      const speed = (btn as HTMLElement).dataset.speed;
+      if (speed === settings.blinkSpeed) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+
+    // 6. Scale control
+    scaleControl?.querySelectorAll(".segment-btn").forEach((btn) => {
+      const s = parseFloat((btn as HTMLElement).dataset.scale || "1.0");
+      if (s === settings.scale) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+
+    if (scaleValLabel) {
+      scaleValLabel.textContent = `${settings.scale}x`;
+    }
+  }
+
+  // Initial apply
+  applySettingsToDOM(true);
+  await updateWindowSize();
 
   /*
   SETTINGS TOGGLE
@@ -52,8 +252,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
       setTimeout(async () => {
         if (!isSettingsOpen) {
-          await appWindow.setSize(new LogicalSize(NORMAL_WIDTH, NORMAL_HEIGHT));
-          await keepWindowOnScreen();
+          await updateWindowSize();
         }
       }, 280);
     } else {
@@ -64,9 +263,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         isWiggling = false;
       }
 
-      await appWindow.setSize(new LogicalSize(EXPANDED_WIDTH, EXPANDED_HEIGHT));
-      await keepWindowOnScreen();
-
+      await updateWindowSize();
       widget?.classList.add("settings-open");
     }
   }
@@ -77,20 +274,112 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 
   /*
+  SETTINGS EVENTS
+  */
+
+  // Eye color presets
+  eyeColorGroup?.addEventListener("click", (e) => {
+    const target = (e.target as HTMLElement).closest(".color-swatch") as HTMLElement;
+    if (target && target.dataset.color) {
+      settings.eyeColor = target.dataset.color;
+      saveSettings(settings);
+      applySettingsToDOM(true);
+    }
+  });
+
+  // Eye custom color
+  eyeCustomColor?.addEventListener("input", (e) => {
+    const val = (e.target as HTMLInputElement).value;
+    settings.eyeColor = val;
+    saveSettings(settings);
+    applySettingsToDOM(true);
+  });
+
+  // Outline toggle
+  outlineToggle?.addEventListener("change", (e) => {
+    settings.outlineEnabled = (e.target as HTMLInputElement).checked;
+    saveSettings(settings);
+    applySettingsToDOM(true);
+  });
+
+  // Match outline color to eye
+  matchOutlineToggle?.addEventListener("change", (e) => {
+    settings.matchOutlineColor = (e.target as HTMLInputElement).checked;
+    saveSettings(settings);
+    applySettingsToDOM(true);
+  });
+
+  // Outline color presets
+  outlineColorGroup?.addEventListener("click", (e) => {
+    const target = (e.target as HTMLElement).closest(".color-swatch") as HTMLElement;
+    if (target && target.dataset.color) {
+      settings.outlineColor = target.dataset.color;
+      saveSettings(settings);
+      applySettingsToDOM(true);
+    }
+  });
+
+  // Outline custom color
+  outlineCustomColor?.addEventListener("input", (e) => {
+    const val = (e.target as HTMLInputElement).value;
+    settings.outlineColor = val;
+    saveSettings(settings);
+    applySettingsToDOM(true);
+  });
+
+  // Wiggle toggle
+  wiggleToggle?.addEventListener("change", (e) => {
+    settings.wiggleEnabled = (e.target as HTMLInputElement).checked;
+    saveSettings(settings);
+  });
+
+  // Blink speed segment buttons
+  blinkSpeedControl?.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest(".segment-btn") as HTMLElement;
+    if (btn && btn.dataset.speed) {
+      settings.blinkSpeed = btn.dataset.speed as "relaxed" | "normal" | "active";
+      saveSettings(settings);
+      applySettingsToDOM(true);
+    }
+  });
+
+  // Scale segment buttons
+  scaleControl?.addEventListener("click", async (e) => {
+    const btn = (e.target as HTMLElement).closest(".segment-btn") as HTMLElement;
+    if (btn && btn.dataset.scale) {
+      const newScale = parseFloat(btn.dataset.scale);
+      if (newScale !== settings.scale) {
+        settings.scale = newScale;
+        saveSettings(settings);
+        applySettingsToDOM(true);
+        await updateWindowSize();
+      }
+    }
+  });
+
+  // Reset settings
+  resetSettingsBtn?.addEventListener("click", async () => {
+    settings = { ...DEFAULT_SETTINGS };
+    saveSettings(settings);
+    applySettingsToDOM(true);
+    await updateWindowSize();
+  });
+
+  /*
   Keep app on screen
   */
 
   async function keepWindowOnScreen() {
-    const monitor = await currentMonitor();
+    const currentMon = await currentMonitor();
 
-    if (!monitor) {
+    if (!currentMon) {
       return;
     }
 
     const position = await appWindow.outerPosition();
     const size = await appWindow.outerSize();
 
-    const workArea = monitor.workArea;
+    const workArea = currentMon.workArea;
 
     const minX = workArea.position.x;
     const minY = workArea.position.y;
@@ -174,10 +463,10 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   function triggerWiggle() {
     /*
-      Don't wiggle while the user is hovering or when settings are open.
+      Don't wiggle if disabled, hovering, or settings open.
     */
 
-    if (isHovered || isSettingsOpen || !hoverArea) {
+    if (isHovered || isSettingsOpen || !settings.wiggleEnabled || !hoverArea) {
       return;
     }
 
@@ -210,31 +499,31 @@ window.addEventListener("DOMContentLoaded", async () => {
     );
   }
 
+  function getBlinkDelayRange(speed: "relaxed" | "normal" | "active") {
+    switch (speed) {
+      case "relaxed":
+        return { min: 6000, max: 12000 };
+      case "active":
+        return { min: 1500, max: 4000 };
+      case "normal":
+      default:
+        return { min: 3000, max: 8000 };
+    }
+  }
+
   async function blinkLoop() {
     while (true) {
-      /*
-        Wait a random amount of time before blinking.
-
-        For now:
-        3 to 8 seconds.
-      */
-
-      const delay = randomDelay(3000, 8000);
+      const { min, max } = getBlinkDelayRange(settings.blinkSpeed);
+      const delay = randomDelay(min, max);
 
       await new Promise((resolve) => {
         setTimeout(resolve, delay);
       });
 
-      /*
-        Normal blink.
-      */
-
       await blink();
 
       /*
         Occasionally perform a second blink shortly afterward.
-
-        20% chance for now.
       */
 
       if (Math.random() < 0.2) {
@@ -255,11 +544,6 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   hoverArea?.addEventListener("mouseenter", () => {
     isHovered = true;
-
-    /*
-      If the wiggle is currently happening,
-      stop it immediately.
-    */
 
     if (isWiggling) {
       hoverArea.classList.remove("wiggle");
