@@ -26,7 +26,7 @@ body {
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  padding-left: 29px;
+  padding-left: 30px;
   box-sizing: border-box;
 }
 
@@ -143,9 +143,9 @@ SETTINGS BUTTON
   background: rgba(30, 30, 30, 0.95);
   color: rgba(255, 255, 255, 0.9);
   font-family: inherit;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
-  padding: 3px 7px;
+  padding: 4px 8px;
   border-radius: 5px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
@@ -193,20 +193,20 @@ SETTINGS PANEL
 */
 
 #settings-panel {
-  width: 350px;
-  margin-left: 14px;
+  width: 400px;
+  margin-left: 16px;
   flex-shrink: 0;
 
-  background: rgba(36, 36, 36, 0.96);
+  background: rgba(36, 36, 36, 0.97);
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 12px;
+  border-radius: 14px;
 
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.5),
     0 2px 10px rgba(0, 0, 0, 0.3);
 
   box-sizing: border-box;
-  padding: 14px 16px;
+  padding: 16px 20px;
 
   opacity: 0;
   transform: translateX(-24px);
@@ -214,7 +214,7 @@ SETTINGS PANEL
 
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 
   transition:
     transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
@@ -231,34 +231,34 @@ SETTINGS PANEL
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
 }
 
 .settings-title {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .settings-body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .settings-group {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
 }
 
 .setting-row {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
 }
 
 .setting-row-split {
@@ -271,53 +271,53 @@ SETTINGS PANEL
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
 }
 
 .setting-toggle-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .setting-col-toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .setting-col-segment {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .setting-label {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .setting-sublabel {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.65);
 }
 
 /* Color Pickers & Swatches */
 .color-picker-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .color-swatch {
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: var(--swatch-color);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   cursor: pointer;
   padding: 0;
   outline: none;
@@ -326,7 +326,7 @@ SETTINGS PANEL
 }
 
 .color-swatch:hover {
-  transform: scale(1.18);
+  transform: scale(1.16);
 }
 
 .color-swatch.active {
@@ -337,11 +337,11 @@ SETTINGS PANEL
 
 .custom-color-btn {
   position: relative;
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   cursor: pointer;
   box-sizing: border-box;
   display: flex;
@@ -351,7 +351,7 @@ SETTINGS PANEL
 }
 
 .custom-color-btn:hover {
-  transform: scale(1.18);
+  transform: scale(1.16);
 }
 
 .custom-color-btn.active {
@@ -368,8 +368,8 @@ SETTINGS PANEL
 }
 
 .custom-color-indicator {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   border: 1px solid rgba(0, 0, 0, 0.4);
   background: var(--custom-indicator-color, #ffffff);
@@ -380,23 +380,25 @@ SETTINGS PANEL
 .checkbox-label {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
+  gap: 6px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
   cursor: pointer;
 }
 
 .checkbox-label input[type="checkbox"] {
   accent-color: #3b82f6;
   cursor: pointer;
+  width: 14px;
+  height: 14px;
 }
 
 /* Toggle Switches */
 .toggle-switch {
   position: relative;
   display: inline-block;
-  width: 32px;
-  height: 18px;
+  width: 38px;
+  height: 22px;
   cursor: pointer;
 }
 
@@ -412,16 +414,16 @@ SETTINGS PANEL
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.2);
-  border-radius: 18px;
+  background-color: rgba(255, 255, 255, 0.22);
+  border-radius: 22px;
   transition: background-color 200ms ease;
 }
 
 .toggle-slider:before {
   position: absolute;
   content: "";
-  height: 14px;
-  width: 14px;
+  height: 18px;
+  width: 18px;
   left: 2px;
   bottom: 2px;
   background-color: white;
@@ -434,27 +436,27 @@ SETTINGS PANEL
 }
 
 .toggle-switch input:checked + .toggle-slider:before {
-  transform: translateX(14px);
+  transform: translateX(16px);
 }
 
 /* Segmented Control */
 .segmented-control {
   display: flex;
   background: rgba(0, 0, 0, 0.35);
-  border-radius: 6px;
-  padding: 2px;
-  gap: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
 }
 
 .segment-btn {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
   font-weight: 500;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 6px 12px;
+  border-radius: 6px;
   cursor: pointer;
   transition: background 150ms ease, color 150ms ease;
   font-family: inherit;
@@ -467,7 +469,7 @@ SETTINGS PANEL
 }
 
 .segment-btn.active {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.2);
   color: #ffffff;
   font-weight: 600;
 }
@@ -480,13 +482,14 @@ SETTINGS PANEL
 }
 
 .scale-val {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: #3b82f6;
 }
 
 .scale-control .segment-btn {
-  padding: 3px 6px;
+  padding: 5px 8px;
+  font-size: 12.5px;
 }
 
 /* Disabled Row */
@@ -497,8 +500,8 @@ SETTINGS PANEL
 
 /* Footer Reset Button */
 .settings-footer {
-  padding-top: 4px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
   display: flex;
   justify-content: flex-end;
 }
@@ -506,28 +509,28 @@ SETTINGS PANEL
 .reset-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
   font-weight: 500;
-  padding: 5px 10px;
-  border-radius: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
   cursor: pointer;
   font-family: inherit;
   transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
 }
 
 .reset-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .btn-icon {
-  width: 13px;
-  height: 13px;
+  width: 15px;
+  height: 15px;
 }
 
 /*

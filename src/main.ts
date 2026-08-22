@@ -96,13 +96,14 @@ window.addEventListener("DOMContentLoaded", async () => {
   let isSettingsOpen = false;
 
   function getWindowSizes(scale: number) {
-    const BASE_CARD = 260;
-    const normalWidth = Math.round(BASE_CARD * scale);
-    const normalHeight = Math.round(BASE_CARD * scale);
+    const cardWidth = Math.round(180 * scale + 22);
+    const cardHeight = Math.round(180 * scale + 22);
 
-    const SETTINGS_PANEL_WIDTH = 380;
-    const expandedWidth = Math.round((BASE_CARD * scale) + SETTINGS_PANEL_WIDTH);
-    const expandedHeight = Math.max(normalHeight, 350);
+    const normalWidth = cardWidth + 60;
+    const normalHeight = cardHeight + 60;
+
+    const expandedWidth = cardWidth + 480;
+    const expandedHeight = Math.max(normalHeight, 410);
 
     return { normalWidth, normalHeight, expandedWidth, expandedHeight };
   }
