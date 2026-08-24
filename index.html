@@ -54,12 +54,73 @@
           <path d="M20.4526 61.9326C26.7487 71.0751 43.8618 92.333 66.8755 92.333C91.538 92.3329 107.529 71.2866 113.349 62.0703C114.969 64.3507 115.803 65.8142 115.814 65.833C115.814 65.833 98.4517 100.333 66.8755 100.333C37.5572 100.333 17.814 65.833 17.814 65.833C17.8252 65.814 18.7249 64.2921 20.4526 61.9326Z" />
         </svg>
 
+        <button id="water-toggle" type="button" aria-label="Water Tracker">
+          <span class="water-tooltip">Water Tracker</span>
+          <svg class="droplet-icon-svg" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 36C8.38709 36 -3.48239e-05 32.6236 0 22.8231C3.48241e-05 13.0226 14 0 14 0C14 0 28 12.6869 28 22.8231C28 32.9592 19.6129 36 14 36Z" fill="currentColor"/>
+          </svg>
+        </button>
+
         <button id="settings-toggle" type="button" aria-label="Settings">
           <span class="settings-tooltip">Settings</span>
           <svg class="gear-icon" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M24.5264 6.17079C21.8278 6.78811 19.2996 7.85224 17.0234 9.28087L11.0205 6.55301L6.553 11.0205L9.28114 17.0231C7.85247 19.2993 6.78841 21.8275 6.17106 24.5261L-2.86102e-06 26.8408V33.1589L6.17106 35.4736C6.78839 38.1722 7.85248 40.7004 9.28114 42.9766L6.553 48.9795L11.0205 53.447L17.0234 50.7189C19.2996 52.1475 21.8278 53.2116 24.5264 53.8289L26.8408 60H33.1589L35.4739 53.8289C38.1725 53.2116 40.7007 52.1475 42.9769 50.7189L48.9795 53.447L53.447 48.9795L50.7191 42.9766C52.1478 40.7004 53.2119 38.1722 53.8292 35.4736L60 33.1592V26.8411L53.8292 24.5261C53.2119 21.8276 52.1478 19.2993 50.7191 17.0231L53.447 11.0205L48.9795 6.55301L42.9769 9.28087C40.7007 7.85223 38.1724 6.78813 35.4739 6.17079L33.1592 0H26.8411L24.5264 6.17079ZM30 8.33333C41.9662 8.33333 51.6667 18.0338 51.6667 30C51.6667 41.9662 41.9662 51.6667 30 51.6667C18.0338 51.6667 8.33333 41.9662 8.33333 30C8.33333 18.0338 18.0338 8.33333 30 8.33333ZM30 11.4735C19.7681 11.4735 11.4735 19.7681 11.4735 30C11.4735 40.2319 19.7681 48.5265 30 48.5265C40.2319 48.5265 48.5265 40.2319 48.5265 30C48.5265 19.7681 40.2319 11.4735 30 11.4735ZM30.1389 15.2778C38.193 15.2778 44.7222 21.807 44.7222 29.8611C44.7222 37.9153 38.193 44.4444 30.1389 44.4444C22.0847 44.4444 15.5556 37.9153 15.5556 29.8611C15.5556 21.807 22.0847 15.2778 30.1389 15.2778Z" fill="currentColor"/>
           </svg>
         </button>
+
+        <!-- Water Drop Container -->
+        <div id="water-drop-wrapper" class="water-drop-wrapper">
+          <!-- Action Bar during reminder -->
+          <div id="water-action-bar" class="water-action-bar">
+            <button type="button" id="water-skip-btn" class="water-pill-btn skip-btn">SKIP</button>
+            <button type="button" id="water-one-cup-btn" class="water-pill-btn primary-btn">
+              <span id="water-cup-btn-label">1 CUP</span>
+            </button>
+            <div class="water-custom-wrapper">
+              <button type="button" id="water-custom-toggle-btn" class="water-pill-btn custom-btn">INPUT</button>
+              <div id="water-custom-popover" class="water-custom-popover">
+                <div class="quick-add-group">
+                  <button type="button" class="quick-add-btn" data-amount="100">+100</button>
+                  <button type="button" class="quick-add-btn" data-amount="250">+250</button>
+                  <button type="button" class="quick-add-btn" data-amount="500">+500</button>
+                </div>
+                <div class="custom-input-row">
+                  <input type="number" id="water-custom-input" min="20" max="2000" step="50" value="250" placeholder="ml" />
+                  <button type="button" id="water-custom-submit-btn">Add</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SVG Droplet -->
+          <svg id="water-droplet-svg" class="water-droplet-svg" viewBox="0 0 144 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <clipPath id="droplet-inner-clip">
+                <path d="M61.5 159C36.8433 159 -0.000152976 144.087 0 100.802C0.000152977 57.5164 61.5 0 61.5 0C61.5 0 123 56.034 123 100.802C123 145.57 86.1567 159 61.5 159Z" transform="translate(10.5, 10.5)" />
+              </clipPath>
+            </defs>
+
+            <!-- Background unfilled reservoir -->
+            <path class="droplet-bg" d="M61.5 159C36.8433 159 -0.000152976 144.087 0 100.802C0.000152977 57.5164 61.5 0 61.5 0C61.5 0 123 56.034 123 100.802C123 145.57 86.1567 159 61.5 159Z" transform="translate(10.5, 10.5)" />
+
+            <!-- Clipped liquid level -->
+            <g clip-path="url(#droplet-inner-clip)">
+              <g id="liquid-fill-group" class="liquid-fill-group">
+                <path id="liquid-wave-path" class="liquid-wave-path" d="M -144,0 Q -72,-9 0,0 T 144,0 T 288,0 T 432,0 L 432,200 L -144,200 Z" />
+              </g>
+            </g>
+
+            <!-- Droplet Outer Shell -->
+            <path class="droplet-outer-shell" d="M71.79 0C71.79 0 143.581 63.4346 143.581 114.115C143.581 164.796 100.573 180 71.79 180C43.0076 180 -0.000178537 163.118 3.55897e-08 114.115C0.000312428 65.1567 71.6615 0.116591 71.79 0ZM71.79 9C71.6682 9.11338 6.83708 69.4533 6.83691 114.874C6.83693 160.337 45.7488 176 71.79 176C97.8313 176 136.744 161.894 136.744 114.874C136.744 67.8536 71.79 9 71.79 9Z" />
+          </svg>
+
+          <!-- Manual / Status Info Bar -->
+          <div id="water-manual-bar" class="water-manual-bar">
+            <button type="button" id="water-minus-btn" class="water-ctrl-btn" title="Undo / Subtract 1 Cup">−</button>
+            <span id="water-progress-text" class="water-progress-text">0 / 2000 ml</span>
+            <button type="button" id="water-plus-btn" class="water-ctrl-btn" title="Add 1 Cup">+</button>
+          </div>
+        </div>
       </div>
 
       <div id="settings-panel">
@@ -147,11 +208,82 @@
             </div>
           </div>
 
+          <!-- Water Reminder Group -->
+          <div class="settings-group">
+            <div class="setting-row-split">
+              <div class="setting-toggle-item">
+                <span class="setting-label">Water Reminder</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="water-reminder-toggle" checked />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <button type="button" id="water-test-btn" class="quick-test-btn">Test Alert</button>
+            </div>
+
+            <div class="setting-row" id="water-settings-body">
+              <!-- Interval -->
+              <div class="setting-subrow">
+                <span class="setting-sublabel">Interval</span>
+                <div class="segmented-control" id="water-interval-control">
+                  <button type="button" class="segment-btn" data-interval="15">15m</button>
+                  <button type="button" class="segment-btn active" data-interval="30">30m</button>
+                  <button type="button" class="segment-btn" data-interval="45">45m</button>
+                  <button type="button" class="segment-btn" data-interval="60">60m</button>
+                  <button type="button" class="segment-btn" data-interval="custom">Custom</button>
+                </div>
+                <div class="custom-input-inline" id="water-custom-interval-container" style="display: none;">
+                  <input type="number" id="water-custom-interval-input" min="1" max="240" value="30" />
+                  <span class="input-unit">mins</span>
+                </div>
+              </div>
+
+              <!-- Daily Goal -->
+              <div class="setting-subrow">
+                <span class="setting-sublabel">Daily Norm</span>
+                <div class="segmented-control" id="water-goal-control">
+                  <button type="button" class="segment-btn active" data-goal="standard">Standard</button>
+                  <button type="button" class="segment-btn" data-goal="active">Active</button>
+                  <button type="button" class="segment-btn" data-goal="athlete">Athlete</button>
+                  <button type="button" class="segment-btn" data-goal="custom">Custom</button>
+                </div>
+                <div class="custom-input-inline" id="water-custom-goal-container" style="display: none;">
+                  <input type="number" id="water-custom-goal-input" min="500" max="8000" step="100" value="2000" />
+                  <span class="input-unit">ml</span>
+                </div>
+              </div>
+
+              <!-- Cup Size -->
+              <div class="setting-subrow">
+                <div class="cup-size-header">
+                  <span class="setting-sublabel">1 Cup Size</span>
+                  <span class="scale-val" id="cup-size-label">250 ml</span>
+                </div>
+                <div class="segmented-control" id="water-cup-control">
+                  <button type="button" class="segment-btn" data-cup="150">150ml</button>
+                  <button type="button" class="segment-btn" data-cup="200">200ml</button>
+                  <button type="button" class="segment-btn active" data-cup="250">250ml</button>
+                  <button type="button" class="segment-btn" data-cup="330">330ml</button>
+                  <button type="button" class="segment-btn" data-cup="500">500ml</button>
+                </div>
+              </div>
+
+              <!-- Today's Intake Status & Reset -->
+              <div class="water-status-card">
+                <div class="water-status-info">
+                  <span class="water-status-label">Today's Progress</span>
+                  <span class="water-status-val" id="water-status-val">0 / 2000 ml (0%)</span>
+                </div>
+                <button type="button" id="water-reset-today-btn" class="water-reset-sm-btn">Reset Today</button>
+              </div>
+            </div>
+          </div>
+
           <!-- Scale Group -->
           <div class="settings-group">
             <div class="setting-row">
               <div class="scale-header">
-                <span class="setting-label">Eye Scale</span>
+                <span class="setting-label">Scale</span>
                 <span class="scale-val" id="scale-val-label">1.0x</span>
               </div>
               <div class="segmented-control scale-control" id="scale-control">

@@ -18,6 +18,13 @@ interface AppSettings {
   wiggleEnabled: boolean;
   blinkSpeed: "relaxed" | "normal" | "active";
   scale: number;
+
+  // Water Tracker Settings
+  waterReminderEnabled: boolean;
+  waterIntervalMinutes: number; // e.g. 15, 30, 45, 60 or custom
+  waterGoalPreset: "standard" | "active" | "athlete" | "custom";
+  waterGoalCustomMl: number;
+  waterCupSizeMl: number;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -28,7 +35,23 @@ const DEFAULT_SETTINGS: AppSettings = {
   wiggleEnabled: true,
   blinkSpeed: "normal",
   scale: 1.0,
+
+  waterReminderEnabled: true,
+  waterIntervalMinutes: 30,
+  waterGoalPreset: "standard",
+  waterGoalCustomMl: 2000,
+  waterCupSizeMl: 250,
 };
+
+interface WaterState {
+  date: string; // YYYY-MM-DD
+  currentMl: number;
+}
+
+function getTodayDateString(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 function loadSettings(): AppSettings {
   try {
@@ -50,13 +73,50 @@ function saveSettings(settings: AppSettings) {
   }
 }
 
+function loadWaterState(): WaterState {
+  const today = getTodayDateString();
+  try {
+    const saved = localStorage.getItem("blinkeye_water_state");
+    if (saved) {
+      const parsed: WaterState = JSON.parse(saved);
+      if (parsed.date === today) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to load water state", e);
+  }
+  return { date: today, currentMl: 0 };
+}
+
+function saveWaterState(state: WaterState) {
+  try {
+    localStorage.setItem("blinkeye_water_state", JSON.stringify(state));
+  } catch (e) {
+    console.error("Failed to save water state", e);
+  }
+}
+
+function getDailyGoalMl(settings: AppSettings): number {
+  switch (settings.waterGoalPreset) {
+    case "standard":
+      return 2000;
+    case "active":
+      return 2600;
+    case "athlete":
+      return 3200;
+    case "custom":
+      return settings.waterGoalCustomMl || 2000;
+  }
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
   let settings: AppSettings = loadSettings();
+  let waterState: WaterState = loadWaterState();
 
   /*
   Get the monitor where the widget is located.
   */
-
   const monitor = await currentMonitor();
   const screenWidth = monitor?.size.width || 0;
   const screenHeight = monitor?.size.height || 0;
@@ -64,7 +124,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   /*
   Center the widget on the screen.
   */
-
   await appWindow.setPosition(
     new PhysicalPosition(screenWidth / 2 - 130, screenHeight / 2 - 130)
   );
@@ -72,6 +131,21 @@ window.addEventListener("DOMContentLoaded", async () => {
   const widget = document.getElementById("widget");
   const hoverArea = document.getElementById("hover-area");
   const settingsToggle = document.getElementById("settings-toggle");
+  const waterToggle = document.getElementById("water-toggle");
+
+  // Water elements
+  const waterDropletSvg = document.getElementById("water-droplet-svg");
+  const waterSkipBtn = document.getElementById("water-skip-btn");
+  const waterOneCupBtn = document.getElementById("water-one-cup-btn");
+  const waterCupBtnLabel = document.getElementById("water-cup-btn-label");
+  const waterCustomToggleBtn = document.getElementById("water-custom-toggle-btn");
+  const waterCustomPopover = document.getElementById("water-custom-popover");
+  const waterCustomInput = document.getElementById("water-custom-input") as HTMLInputElement;
+  const waterCustomSubmitBtn = document.getElementById("water-custom-submit-btn");
+  const waterMinusBtn = document.getElementById("water-minus-btn");
+  const waterPlusBtn = document.getElementById("water-plus-btn");
+  const waterProgressText = document.getElementById("water-progress-text");
+  const liquidFillGroup = document.getElementById("liquid-fill-group");
 
   // Setting Elements
   const eyeColorGroup = document.getElementById("eye-color-group");
@@ -91,9 +165,26 @@ window.addEventListener("DOMContentLoaded", async () => {
   const scaleValLabel = document.getElementById("scale-val-label");
   const resetSettingsBtn = document.getElementById("reset-settings-btn");
 
+  // Water Settings Elements
+  const waterReminderToggle = document.getElementById("water-reminder-toggle") as HTMLInputElement;
+  const waterSettingsBody = document.getElementById("water-settings-body");
+  const waterTestBtn = document.getElementById("water-test-btn");
+  const waterIntervalControl = document.getElementById("water-interval-control");
+  const waterCustomIntervalContainer = document.getElementById("water-custom-interval-container");
+  const waterCustomIntervalInput = document.getElementById("water-custom-interval-input") as HTMLInputElement;
+  const waterGoalControl = document.getElementById("water-goal-control");
+  const waterCustomGoalContainer = document.getElementById("water-custom-goal-container");
+  const waterCustomGoalInput = document.getElementById("water-custom-goal-input") as HTMLInputElement;
+  const waterCupControl = document.getElementById("water-cup-control");
+  const cupSizeLabel = document.getElementById("cup-size-label");
+  const waterStatusVal = document.getElementById("water-status-val");
+  const waterResetTodayBtn = document.getElementById("water-reset-today-btn");
+
   let isHovered = false;
   let isWiggling = false;
   let isSettingsOpen = false;
+  let isWaterAlarm = false;
+  let isWaterManual = false;
 
   function getWindowSizes(scale: number) {
     const cardWidth = Math.round(180 * scale + 22);
@@ -103,7 +194,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     const normalHeight = cardHeight + 60;
 
     const expandedWidth = cardWidth + 480;
-    const expandedHeight = Math.max(normalHeight, 410);
+    const expandedHeight = Math.max(normalHeight, 520);
 
     return { normalWidth, normalHeight, expandedWidth, expandedHeight };
   }
@@ -116,6 +207,38 @@ window.addEventListener("DOMContentLoaded", async () => {
       await appWindow.setSize(new LogicalSize(sizes.normalWidth, sizes.normalHeight));
     }
     await keepWindowOnScreen();
+  }
+
+  function updateWaterProgressDOM() {
+    const today = getTodayDateString();
+    if (waterState.date !== today) {
+      waterState = { date: today, currentMl: 0 };
+      saveWaterState(waterState);
+    }
+
+    const goal = getDailyGoalMl(settings);
+    const ratio = Math.min(Math.max(waterState.currentMl / goal, 0), 1);
+    const percentage = Math.round(ratio * 100);
+
+    // Liquid container total cavity height is ~159px, from Y 11 to 170
+    const targetY = 170 - (ratio * 159);
+    if (liquidFillGroup) {
+      liquidFillGroup.style.transform = `translateY(${targetY}px)`;
+    }
+
+    const progressStr = `${waterState.currentMl} / ${goal} ml (${percentage}%)`;
+    if (waterProgressText) {
+      waterProgressText.textContent = progressStr;
+    }
+    if (waterStatusVal) {
+      waterStatusVal.textContent = progressStr;
+    }
+    if (waterCupBtnLabel) {
+      waterCupBtnLabel.textContent = `1 CUP (${settings.waterCupSizeMl}ml)`;
+    }
+    if (cupSizeLabel) {
+      cupSizeLabel.textContent = `${settings.waterCupSizeMl} ml`;
+    }
   }
 
   function applySettingsToDOM(updateUI: boolean = true) {
@@ -139,6 +262,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (outlineCustomIndicator) {
       outlineCustomIndicator.style.backgroundColor = activeOutlineColor;
     }
+
+    updateWaterProgressDOM();
 
     if (!updateUI) return;
 
@@ -223,7 +348,65 @@ window.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
-    // 6. Scale control
+    // 6. Water Reminder Toggle
+    if (waterReminderToggle) {
+      waterReminderToggle.checked = settings.waterReminderEnabled;
+    }
+    if (waterSettingsBody) {
+      if (settings.waterReminderEnabled) {
+        waterSettingsBody.classList.remove("disabled");
+      } else {
+        waterSettingsBody.classList.add("disabled");
+      }
+    }
+
+    // 7. Water Interval
+    let isPresetInterval = false;
+    waterIntervalControl?.querySelectorAll(".segment-btn").forEach((btn) => {
+      const intervalVal = (btn as HTMLElement).dataset.interval;
+      if (intervalVal && parseInt(intervalVal) === settings.waterIntervalMinutes) {
+        btn.classList.add("active");
+        isPresetInterval = true;
+      } else if (intervalVal === "custom" && !isPresetInterval) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+    if (waterCustomIntervalContainer) {
+      waterCustomIntervalContainer.style.display = isPresetInterval ? "none" : "flex";
+    }
+    if (waterCustomIntervalInput) {
+      waterCustomIntervalInput.value = settings.waterIntervalMinutes.toString();
+    }
+
+    // 8. Water Goal
+    waterGoalControl?.querySelectorAll(".segment-btn").forEach((btn) => {
+      const goal = (btn as HTMLElement).dataset.goal;
+      if (goal === settings.waterGoalPreset) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+    if (waterCustomGoalContainer) {
+      waterCustomGoalContainer.style.display = settings.waterGoalPreset === "custom" ? "flex" : "none";
+    }
+    if (waterCustomGoalInput) {
+      waterCustomGoalInput.value = (settings.waterGoalCustomMl || 2000).toString();
+    }
+
+    // 9. Water Cup Size
+    waterCupControl?.querySelectorAll(".segment-btn").forEach((btn) => {
+      const cupVal = parseInt((btn as HTMLElement).dataset.cup || "250");
+      if (cupVal === settings.waterCupSizeMl) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+
+    // 10. Scale control
     scaleControl?.querySelectorAll(".segment-btn").forEach((btn) => {
       const s = parseFloat((btn as HTMLElement).dataset.scale || "1.0");
       if (s === settings.scale) {
@@ -241,6 +424,176 @@ window.addEventListener("DOMContentLoaded", async () => {
   // Initial apply
   applySettingsToDOM(true);
   await updateWindowSize();
+
+  /*
+  WATER REMINDER & TRACKER STATE LOGIC
+  */
+
+  function showWaterAlarm() {
+    isWaterAlarm = true;
+    isWaterManual = false;
+    hoverArea?.classList.add("water-mode", "water-alarm");
+    hoverArea?.classList.remove("water-manual");
+    waterToggle?.classList.add("active");
+    updateWaterProgressDOM();
+  }
+
+  function showWaterManual() {
+    isWaterManual = true;
+    isWaterAlarm = false;
+    hoverArea?.classList.add("water-mode", "water-manual");
+    hoverArea?.classList.remove("water-alarm");
+    waterToggle?.classList.add("active");
+    updateWaterProgressDOM();
+  }
+
+  function showEyeMode() {
+    isWaterAlarm = false;
+    isWaterManual = false;
+    hoverArea?.classList.remove("water-mode", "water-alarm", "water-manual");
+    waterToggle?.classList.remove("active");
+    waterCustomPopover?.classList.remove("open");
+  }
+
+  function toggleWaterManual() {
+    if (isWaterAlarm) {
+      dismissWaterAlarm();
+      return;
+    }
+    if (isWaterManual) {
+      showEyeMode();
+    } else {
+      showWaterManual();
+    }
+  }
+
+  function logWaterIntake(amountMl: number) {
+    const today = getTodayDateString();
+    if (waterState.date !== today) {
+      waterState = { date: today, currentMl: 0 };
+    }
+    waterState.currentMl = Math.max(0, waterState.currentMl + amountMl);
+    saveWaterState(waterState);
+    updateWaterProgressDOM();
+  }
+
+  function dismissWaterAlarm() {
+    if (isWaterAlarm) {
+      showEyeMode();
+      resetWaterReminderTimer();
+    }
+  }
+
+  let waterReminderTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  function resetWaterReminderTimer() {
+    if (waterReminderTimeout) {
+      clearTimeout(waterReminderTimeout);
+      waterReminderTimeout = null;
+    }
+
+    if (!settings.waterReminderEnabled) return;
+
+    const ms = Math.max(1, settings.waterIntervalMinutes) * 60 * 1000;
+    waterReminderTimeout = setTimeout(() => {
+      if (settings.waterReminderEnabled && !isSettingsOpen) {
+        showWaterAlarm();
+      } else {
+        resetWaterReminderTimer();
+      }
+    }, ms);
+  }
+
+  // Start water timer
+  resetWaterReminderTimer();
+
+  /*
+  WATER EVENT HANDLERS
+  */
+
+  waterToggle?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleWaterManual();
+  });
+
+  waterSkipBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    dismissWaterAlarm();
+  });
+
+  waterOneCupBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    logWaterIntake(settings.waterCupSizeMl);
+    setTimeout(() => {
+      dismissWaterAlarm();
+    }, 850);
+  });
+
+  waterDropletSvg?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (isWaterAlarm) {
+      logWaterIntake(settings.waterCupSizeMl);
+      setTimeout(() => {
+        dismissWaterAlarm();
+      }, 850);
+    }
+  });
+
+  waterCustomToggleBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    waterCustomPopover?.classList.toggle("open");
+  });
+
+  waterCustomPopover?.querySelectorAll(".quick-add-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const amount = parseInt((btn as HTMLElement).dataset.amount || "250");
+      logWaterIntake(amount);
+      waterCustomPopover?.classList.remove("open");
+      if (isWaterAlarm) {
+        setTimeout(() => dismissWaterAlarm(), 850);
+      }
+    });
+  });
+
+  waterCustomSubmitBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const amount = parseInt(waterCustomInput?.value || "250");
+    if (!isNaN(amount) && amount > 0) {
+      logWaterIntake(amount);
+      waterCustomPopover?.classList.remove("open");
+      if (isWaterAlarm) {
+        setTimeout(() => dismissWaterAlarm(), 850);
+      }
+    }
+  });
+
+  waterPlusBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    logWaterIntake(settings.waterCupSizeMl);
+  });
+
+  waterMinusBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    logWaterIntake(-settings.waterCupSizeMl);
+  });
+
+  waterTestBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (isSettingsOpen) {
+      toggleSettings();
+    }
+    setTimeout(() => {
+      showWaterAlarm();
+    }, 300);
+  });
+
+  waterResetTodayBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    waterState.currentMl = 0;
+    saveWaterState(waterState);
+    updateWaterProgressDOM();
+  });
 
   /*
   SETTINGS TOGGLE
@@ -344,6 +697,74 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  // Water Reminder Toggle
+  waterReminderToggle?.addEventListener("change", (e) => {
+    settings.waterReminderEnabled = (e.target as HTMLInputElement).checked;
+    saveSettings(settings);
+    applySettingsToDOM(true);
+    resetWaterReminderTimer();
+  });
+
+  // Water Interval Segment Buttons
+  waterIntervalControl?.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest(".segment-btn") as HTMLElement;
+    if (btn && btn.dataset.interval) {
+      const val = btn.dataset.interval;
+      if (val === "custom") {
+        if (waterCustomIntervalContainer) {
+          waterCustomIntervalContainer.style.display = "flex";
+        }
+        waterIntervalControl.querySelectorAll(".segment-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+      } else {
+        settings.waterIntervalMinutes = parseInt(val);
+        saveSettings(settings);
+        applySettingsToDOM(true);
+        resetWaterReminderTimer();
+      }
+    }
+  });
+
+  // Water Custom Interval Input
+  waterCustomIntervalInput?.addEventListener("change", (e) => {
+    const val = parseInt((e.target as HTMLInputElement).value);
+    if (!isNaN(val) && val > 0) {
+      settings.waterIntervalMinutes = val;
+      saveSettings(settings);
+      resetWaterReminderTimer();
+    }
+  });
+
+  // Water Goal Segment Buttons
+  waterGoalControl?.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest(".segment-btn") as HTMLElement;
+    if (btn && btn.dataset.goal) {
+      settings.waterGoalPreset = btn.dataset.goal as "standard" | "active" | "athlete" | "custom";
+      saveSettings(settings);
+      applySettingsToDOM(true);
+    }
+  });
+
+  // Water Custom Goal Input
+  waterCustomGoalInput?.addEventListener("change", (e) => {
+    const val = parseInt((e.target as HTMLInputElement).value);
+    if (!isNaN(val) && val >= 100) {
+      settings.waterGoalCustomMl = val;
+      saveSettings(settings);
+      updateWaterProgressDOM();
+    }
+  });
+
+  // Water Cup Size Control
+  waterCupControl?.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest(".segment-btn") as HTMLElement;
+    if (btn && btn.dataset.cup) {
+      settings.waterCupSizeMl = parseInt(btn.dataset.cup);
+      saveSettings(settings);
+      applySettingsToDOM(true);
+    }
+  });
+
   // Scale segment buttons
   scaleControl?.addEventListener("click", async (e) => {
     const btn = (e.target as HTMLElement).closest(".segment-btn") as HTMLElement;
@@ -363,6 +784,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     settings = { ...DEFAULT_SETTINGS };
     saveSettings(settings);
     applySettingsToDOM(true);
+    resetWaterReminderTimer();
     await updateWindowSize();
   });
 
@@ -440,7 +862,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   */
 
   widget?.addEventListener("mousedown", async (event) => {
-    if ((event.target as HTMLElement)?.closest("#settings-toggle, #settings-panel")) {
+    if ((event.target as HTMLElement)?.closest("#settings-toggle, #water-toggle, #settings-panel, #water-action-bar, #water-manual-bar")) {
       return;
     }
 
@@ -464,10 +886,9 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   function triggerWiggle() {
     /*
-      Don't wiggle if disabled, hovering, or settings open.
+      Don't wiggle if disabled, hovering, in water mode, or settings open.
     */
-
-    if (isHovered || isSettingsOpen || !settings.wiggleEnabled || !hoverArea) {
+    if (isHovered || isSettingsOpen || isWaterAlarm || isWaterManual || !settings.wiggleEnabled || !hoverArea) {
       return;
     }
 
@@ -483,6 +904,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   */
 
   async function blink() {
+    if (isWaterAlarm || isWaterManual) {
+      return;
+    }
+
     triggerWiggle();
 
     hoverArea?.classList.add("closed");
@@ -526,7 +951,6 @@ window.addEventListener("DOMContentLoaded", async () => {
       /*
         Occasionally perform a second blink shortly afterward.
       */
-
       if (Math.random() < 0.2) {
         await new Promise((resolve) => {
           setTimeout(resolve, randomDelay(250, 500));
@@ -560,7 +984,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   When the CSS animation finishes,
   clean up the class and allow another wiggle.
   */
-
   hoverArea?.addEventListener("animationend", () => {
     hoverArea.classList.remove("wiggle");
     isWiggling = false;
