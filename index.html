@@ -106,7 +106,8 @@
             <!-- Clipped liquid level -->
             <g clip-path="url(#droplet-inner-clip)">
               <g id="liquid-fill-group" class="liquid-fill-group">
-                <path id="liquid-wave-path" class="liquid-wave-path" d="M -144,0 Q -72,-9 0,0 T 144,0 T 288,0 T 432,0 L 432,200 L -144,200 Z" />
+                <!-- Wave period = 288px; path spans 3 full periods so translation by -288px is seamless -->
+                <path id="liquid-wave-path" class="liquid-wave-path" d="M -288,0 C -252,-12 -180,-12 -144,0 C -108,12 -36,12 0,0 C 36,-12 108,-12 144,0 C 180,12 252,12 288,0 C 324,-12 396,-12 432,0 C 468,12 540,12 576,0 L 576,200 L -288,200 Z" />
               </g>
             </g>
 

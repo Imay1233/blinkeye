@@ -425,6 +425,11 @@ window.addEventListener("DOMContentLoaded", async () => {
   applySettingsToDOM(true);
   await updateWindowSize();
 
+  // Bug 1: reveal widget now that settings are applied (avoids flash of default state)
+  requestAnimationFrame(() => {
+    widget?.classList.add("ready");
+  });
+
   /*
   WATER REMINDER & TRACKER STATE LOGIC
   */
@@ -450,7 +455,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   function showEyeMode() {
     isWaterAlarm = false;
     isWaterManual = false;
-    hoverArea?.classList.remove("water-mode", "water-alarm", "water-manual");
+    hoverArea?.classList.remove("water-mode", "water-alarm", "water-manual", "wiggle-paused");
     waterToggle?.classList.remove("active");
     waterCustomPopover?.classList.remove("open");
   }
@@ -974,10 +979,20 @@ window.addEventListener("DOMContentLoaded", async () => {
       hoverArea.classList.remove("wiggle");
       isWiggling = false;
     }
+
+    // Bug 3: pause water alarm wiggle while hovering so user can click buttons comfortably
+    if (isWaterAlarm) {
+      hoverArea.classList.add("wiggle-paused");
+    }
   });
 
   hoverArea?.addEventListener("mouseleave", () => {
     isHovered = false;
+
+    // Resume alarm wiggle when mouse leaves
+    if (isWaterAlarm) {
+      hoverArea?.classList.remove("wiggle-paused");
+    }
   });
 
   /*
