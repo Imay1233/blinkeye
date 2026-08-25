@@ -344,7 +344,7 @@ SETTINGS PANEL
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding-right: 4px;
+  padding: 0 6px;
 }
 
 .settings-body::-webkit-scrollbar {
@@ -742,6 +742,17 @@ ACTION BAR (DURING WATER ALARM)
   display: flex;
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+/* During the alarm, hide the droplet icon until the user hovers (like the settings gear) */
+#hover-area.water-alarm #water-toggle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#hover-area.water-alarm:hover #water-toggle {
+  opacity: 0.75;
+  pointer-events: auto;
 }
 
 .water-pill-btn {

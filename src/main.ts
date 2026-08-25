@@ -202,8 +202,15 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   async function updateWindowSize() {
     const sizes = getWindowSizes(settings.scale);
-    let width = isSettingsOpen ? sizes.expandedWidth : sizes.normalWidth;
-    let height = isSettingsOpen ? sizes.expandedHeight : sizes.normalHeight;
+    let width = sizes.normalWidth;
+    let height = sizes.normalHeight;
+    if (isSettingsOpen) {
+      width = sizes.expandedWidth;
+      height = sizes.expandedHeight;
+    } else if (isWaterAlarm || isWaterManual) {
+      // Extra room so the alarm action bar stays fully visible while the droplet wiggles
+      height = sizes.normalHeight + 24;
+    }
 
     // Never request a window bigger than the monitor work area (small screens / high DPI)
     const mon = await currentMonitor();
@@ -444,30 +451,33 @@ window.addEventListener("DOMContentLoaded", async () => {
   WATER REMINDER & TRACKER STATE LOGIC
   */
 
-  function showWaterAlarm() {
+  async function showWaterAlarm() {
     isWaterAlarm = true;
     isWaterManual = false;
     hoverArea?.classList.add("water-mode", "water-alarm");
     hoverArea?.classList.remove("water-manual");
     waterToggle?.classList.add("active");
     updateWaterProgressDOM();
+    await updateWindowSize();
   }
 
-  function showWaterManual() {
+  async function showWaterManual() {
     isWaterManual = true;
     isWaterAlarm = false;
     hoverArea?.classList.add("water-mode", "water-manual");
     hoverArea?.classList.remove("water-alarm");
     waterToggle?.classList.add("active");
     updateWaterProgressDOM();
+    await updateWindowSize();
   }
 
-  function showEyeMode() {
+  async function showEyeMode() {
     isWaterAlarm = false;
     isWaterManual = false;
     hoverArea?.classList.remove("water-mode", "water-alarm", "water-manual", "wiggle-paused");
     waterToggle?.classList.remove("active");
     waterCustomPopover?.classList.remove("open");
+    await updateWindowSize();
   }
 
   function toggleWaterManual() {
