@@ -16,7 +16,6 @@ interface AppSettings {
   outlineColor: string;
   outlineEnabled: boolean;
   matchOutlineColor: boolean;
-  eyeEnabled: boolean;
   wiggleEnabled: boolean;
   blinkSpeed: "relaxed" | "normal" | "active";
   scale: number;
@@ -34,7 +33,6 @@ const DEFAULT_SETTINGS: AppSettings = {
   outlineColor: "#2f2f2f",
   outlineEnabled: true,
   matchOutlineColor: false,
-  eyeEnabled: true,
   wiggleEnabled: true,
   blinkSpeed: "normal",
   scale: 1.0,
@@ -162,8 +160,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   const outlineCustomColor = document.getElementById("outline-custom-color") as HTMLInputElement;
   const outlineCustomIndicator = document.getElementById("outline-custom-indicator");
 
-  const eyeToggle = document.getElementById("eye-toggle") as HTMLInputElement;
-  const wiggleToggle = document.getElementById("wiggle-toggle") as HTMLInputElement;
+ const wiggleToggle = document.getElementById("wiggle-toggle") as HTMLInputElement;
   const blinkSpeedControl = document.getElementById("blink-speed-control");
   const scaleControl = document.getElementById("scale-control");
   const scaleValLabel = document.getElementById("scale-val-label");
@@ -452,19 +449,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (scaleValLabel) {
       scaleValLabel.textContent = `${settings.scale}x`;
     }
-
-    // 11. Eye enabled: water-tracker-only mode when off
-    if (widget) {
-      widget.classList.toggle("eye-hidden", !settings.eyeEnabled);
-    }
-    if (eyeToggle) {
-      eyeToggle.checked = settings.eyeEnabled;
-    }
-
-    // With the eye off the app lives in the tray: hide unless settings are open
-    if (!settings.eyeEnabled && !isSettingsOpen) {
-      void appWindow.hide();
-    }
   }
 
   // Initial apply
@@ -487,10 +471,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     hoverArea?.classList.remove("water-manual");
     waterToggle?.classList.add("active");
     updateWaterProgressDOM();
-    if (!settings.eyeEnabled) {
-      // Eye is off (app lives in the tray): pop the window up for the alarm
-      await appWindow.show();
-    }
     await updateWindowSize();
   }
 
@@ -511,10 +491,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     waterToggle?.classList.remove("active");
     waterCustomPopover?.classList.remove("open");
     await updateWindowSize();
-    if (!settings.eyeEnabled && !isSettingsOpen) {
-      // Eye is off: back to the tray
-      await appWindow.hide();
-    }
   }
 
   function toggleWaterManual() {
@@ -674,10 +650,6 @@ window.addEventListener("DOMContentLoaded", async () => {
       setTimeout(async () => {
         if (!isSettingsOpen) {
           await updateWindowSize();
-          if (!settings.eyeEnabled) {
-            // Eye is off: return to the tray after closing settings
-            await appWindow.hide();
-          }
         }
       }, 280);
     } else {
@@ -720,12 +692,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     applySettingsToDOM(true);
   });
 
-  // Eye toggle (off = water-tracker-only; the app lives in the system tray)
-  eyeToggle?.addEventListener("change", (e) => {
-    settings.eyeEnabled = (e.target as HTMLInputElement).checked;
-    saveSettings(settings);
-    applySettingsToDOM(true);
-  });
 
   // Outline toggle
   outlineToggle?.addEventListener("change", (e) => {
@@ -858,15 +824,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 
   /*
-  SYSTEM TRAY EVENTS (eye off = tray-only mode)
+  SYSTEM TRAY EVENTS
   */
-  listen("tray://shown", () => {
-    // Window shown from the tray: with the eye off, present the water tracker
-    if (!settings.eyeEnabled) {
-      showWaterManual();
-    }
-  });
-
   listen("tray://settings", async () => {
     if (!isSettingsOpen) {
       await toggleSettings();

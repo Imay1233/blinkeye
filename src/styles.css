@@ -679,24 +679,6 @@ WATER DROPLET WRAPPER & ELEMENTS
   display: flex;
 }
 
-/* Eye disabled: water-tracker-only mode (app lives in the tray) */
-#hover-area.eye-hidden #eye-open,
-#hover-area.eye-hidden #eye-closed {
-  display: none !important;
-}
-
-#hover-area.eye-hidden .water-drop-wrapper {
-  display: flex;
-}
-
-#hover-area.eye-hidden .water-manual-bar {
-  display: flex;
-}
-
-#hover-area.eye-hidden.water-alarm .water-manual-bar {
-  display: none;
-}
-
 /* Daily norm reached: success fill + glow pulse + check badge */
 .goal-reached .liquid-wave-path {
   fill: #34d399;
