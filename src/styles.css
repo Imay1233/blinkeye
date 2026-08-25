@@ -679,25 +679,23 @@ WATER DROPLET WRAPPER & ELEMENTS
   display: flex;
 }
 
-/* Daily norm reached: success fill + glow pulse + check badge */
-.goal-reached .liquid-wave-path {
+/* Daily norm reached: solid success fill (no wave animation) + static glow + check badge */
+.liquid-flat-fill {
+  display: none;
   fill: #34d399;
-  opacity: 1;
 }
 
+.goal-reached .liquid-flat-fill {
+  display: block;
+}
+
+.goal-reached .liquid-wave-path {
+  display: none;
+}
+
+/* Goal reached: static glow, no pulsing */
 #hover-area.goal-reached .water-droplet-svg {
-  animation: goal-glow 2.2s ease-in-out infinite;
-}
-
-@keyframes goal-glow {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 4px rgba(52, 211, 153, 0.35));
-  }
-
-  50% {
-    filter: drop-shadow(0 0 12px rgba(52, 211, 153, 0.8));
-  }
+  filter: drop-shadow(0 0 8px rgba(52, 211, 153, 0.55));
 }
 
 .goal-badge {
