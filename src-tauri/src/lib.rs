@@ -7,12 +7,6 @@ use tauri::{
     Emitter, Listener, Manager, PhysicalPosition,
 };
 
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
 #[tauri::command]
 fn is_mouse_down() -> bool {
     #[cfg(windows)]
@@ -28,7 +22,7 @@ fn is_mouse_down() -> bool {
 }
 
 /*
-Window position persistence (Option B):
+Window position persistence:
 The frontend saves the widget position after every settle point (drag end,
 startup clamp, resizes). On the next launch the saved position is applied
 here in `setup` while the window is STILL HIDDEN, so the widget reappears
@@ -81,9 +75,7 @@ fn toggle_tray_window(app: &tauri::AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            greet,
             is_mouse_down,
             save_window_position,
             load_window_position

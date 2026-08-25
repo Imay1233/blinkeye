@@ -29,7 +29,8 @@ body {
   padding-left: 30px;
   box-sizing: border-box;
 
-  /* Bug 1: hide until JS has applied saved settings */
+  /* Hidden until main.ts adds .ready once saved settings are applied
+     (prevents a flash of default-styled content on launch) */
   opacity: 0;
   transition: opacity 200ms ease;
 }
@@ -765,7 +766,7 @@ WATER DROPLET WRAPPER & ELEMENTS
   transition: fill 150ms ease;
 }
 
-/* Bug 2: wave repeats every 288px — shift by exactly 1 full period so loop is seamless */
+/* Wave repeats every 288px — shifting by exactly one full period keeps the loop seamless */
 @keyframes wave-flow {
   0% {
     transform: translateX(0);
@@ -1151,7 +1152,7 @@ WIGGLE ANIMATIONS
   animation: water-alarm-wiggle 1.2s ease-in-out infinite;
 }
 
-/* Bug 3: pause the alarm wiggle while the user is hovering so they can click comfortably */
+/* Pause the alarm wiggle while hovered so the user can click comfortably */
 #hover-area.water-alarm.wiggle-paused .water-drop-wrapper {
   animation: none;
 }

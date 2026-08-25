@@ -28,6 +28,44 @@ interface AppSettings {
   waterCupSizeMl: number;
 }
 
+/*
+Timing constants (milliseconds unless noted otherwise).
+*/
+const BLINK_CLOSED_MS = 160; // how long the eyelid stays shut during a blink
+const SECOND_BLINK_MIN_MS = 250; // window for the occasional follow-up blink...
+const SECOND_BLINK_MAX_MS = 500; // ...so it reads as a natural double-blink
+const DOUBLE_BLINK_CHANCE = 0.2; // probability that a blink is followed by a second one
+const DISMISS_AFTER_LOG_MS = 850; // lets the user see the level rise before the alarm closes
+const TEST_ALARM_DELAY_MS = 300; // waits for the settings panel to close first
+const SETTINGS_RESIZE_DELAY_MS = 280; // matches the CSS settings-panel transition duration
+const DRAG_MOUSE_POLL_MS = 40; // drag-end detection rate while dragging
+const DAY_CHECK_INTERVAL_MS = 30 * 1000;
+
+/*
+Water goals (ml) per activity preset.
+*/
+const WATER_GOALS_ML = { standard: 2000, active: 2600, athlete: 3200 } as const;
+const DEFAULT_GOAL_ML = WATER_GOALS_ML.standard;
+
+/*
+Droplet cavity geometry inside the water SVG (viewBox units):
+the liquid travels from Y=170 (empty) up 159px when the goal is reached.
+*/
+const WATER_CAVITY_BOTTOM_Y = 170;
+const WATER_CAVITY_TRAVEL_PX = 159;
+
+/*
+Widget window sizing (logical px): eye card plus breathing room; the
+settings panel docks beside the card and must fit on screen too.
+*/
+const EYE_CARD_BASE_PX = 180;
+const EYE_CARD_EXTRA_PX = 22;
+const WINDOW_MARGIN_PX = 60;
+const SETTINGS_PANEL_WIDTH_PX = 530;
+const MIN_EXPANDED_HEIGHT_PX = 560;
+const WATER_ALARM_EXTRA_HEIGHT_PX = 24;
+const WORK_AREA_MARGIN_PX = 16;
+
 const DEFAULT_SETTINGS: AppSettings = {
   eyeColor: "#ffffff",
   outlineColor: "#2f2f2f",
@@ -40,7 +78,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   waterReminderEnabled: true,
   waterIntervalMinutes: 30,
   waterGoalPreset: "standard",
-  waterGoalCustomMl: 2000,
+  waterGoalCustomMl: DEFAULT_GOAL_ML,
   waterCupSizeMl: 250,
 };
 
@@ -99,15 +137,52 @@ function saveWaterState(state: WaterState) {
 }
 
 function getDailyGoalMl(settings: AppSettings): number {
-  switch (settings.waterGoalPreset) {
-    case "standard":
-      return 2000;
-    case "active":
-      return 2600;
-    case "athlete":
-      return 3200;
-    case "custom":
-      return settings.waterGoalCustomMl || 2000;
+  if (settings.waterGoalPreset === "custom") {
+    return settings.waterGoalCustomMl || DEFAULT_GOAL_ML;
+  }
+  return WATER_GOALS_ML[settings.waterGoalPreset];
+}
+
+/*
+Highlight exactly one .segment-btn per control: the first whose dataset key
+matches. Kept as a predicate so numeric attributes (scale "0.5"/"1.0") can
+compare numerically while string attributes compare literally.
+*/
+function syncSegmentedControl(
+  control: HTMLElement | null,
+  matches: (btn: HTMLElement) => boolean
+) {
+  control?.querySelectorAll<HTMLElement>(".segment-btn").forEach((btn) => {
+    btn.classList.toggle("active", matches(btn));
+  });
+}
+
+/*
+Highlight the color swatch matching `color` (case-insensitive); when none
+matches, highlight the custom-color button instead and mirror the chosen
+color into its input.
+*/
+function syncColorSwatches(
+  group: HTMLElement | null,
+  customInput: HTMLInputElement | null,
+  color: string
+) {
+  group?.querySelectorAll<HTMLElement>(".color-swatch").forEach((btn) => {
+    btn.classList.toggle(
+      "active",
+      (btn.dataset.color ?? "").toLowerCase() === color.toLowerCase()
+    );
+  });
+
+  const customBtn = customInput?.closest(".custom-color-btn");
+  const matchesPreset = Array.from(
+    group?.querySelectorAll<HTMLElement>(".color-swatch") ?? []
+  ).some((b) => (b.dataset.color ?? "").toLowerCase() === color.toLowerCase());
+
+  customBtn?.classList.toggle("active", !matchesPreset);
+
+  if (customInput) {
+    customInput.value = color;
   }
 }
 
@@ -195,25 +270,24 @@ window.addEventListener("DOMContentLoaded", async () => {
   let isWaterManual = false;
 
   function getWindowSizes(scale: number) {
-    const cardWidth = Math.round(180 * scale + 22);
-    const cardHeight = Math.round(180 * scale + 22);
+    const cardWidth = Math.round(EYE_CARD_BASE_PX * scale + EYE_CARD_EXTRA_PX);
+    const cardHeight = Math.round(EYE_CARD_BASE_PX * scale + EYE_CARD_EXTRA_PX);
 
-    const normalWidth = cardWidth + 60;
-    const normalHeight = cardHeight + 60;
+    const normalWidth = cardWidth + WINDOW_MARGIN_PX;
+    const normalHeight = cardHeight + WINDOW_MARGIN_PX;
 
-    // Settings panel (460px) + eye card + margins must fit with breathing room
-    const expandedWidth = cardWidth + 530;
-    const expandedHeight = Math.max(normalHeight, 560);
+    // Settings panel docks beside the card; everything must fit with breathing room
+    const expandedWidth = cardWidth + SETTINGS_PANEL_WIDTH_PX;
+    const expandedHeight = Math.max(normalHeight, MIN_EXPANDED_HEIGHT_PX);
 
     return { normalWidth, normalHeight, expandedWidth, expandedHeight };
   }
 
   /*
-  HiDPI-safe centering (Option D). The monitor size is in physical pixels;
+  HiDPI-safe centering. The monitor size is in physical pixels;
   dividing by scaleFactor gives logical units, so the widget is centered
-  correctly on scaled displays (the old math mixed a hardcoded 130px logical
-  offset into physical pixel coordinates and drifted off-center).
-  Uses the real widget size for the current saved scale.
+  correctly on scaled displays. Uses the real widget size for the current
+  saved scale.
   */
   async function centerWindowOnMonitor() {
     const mon = await currentMonitor();
@@ -243,15 +317,19 @@ window.addEventListener("DOMContentLoaded", async () => {
       height = sizes.expandedHeight;
     } else if (isWaterAlarm || isWaterManual) {
       // Extra room so the alarm action bar stays fully visible while the droplet wiggles
-      height = sizes.normalHeight + 24;
+      height = sizes.normalHeight + WATER_ALARM_EXTRA_HEIGHT_PX;
     }
 
     // Never request a window bigger than the monitor work area (small screens / high DPI)
     const mon = await currentMonitor();
     if (mon) {
       const scaleFactor = mon.scaleFactor || 1;
-      const maxLogicalWidth = Math.floor((mon.workArea.size.width - 16) / scaleFactor);
-      const maxLogicalHeight = Math.floor((mon.workArea.size.height - 16) / scaleFactor);
+      const maxLogicalWidth = Math.floor(
+        (mon.workArea.size.width - WORK_AREA_MARGIN_PX) / scaleFactor
+      );
+      const maxLogicalHeight = Math.floor(
+        (mon.workArea.size.height - WORK_AREA_MARGIN_PX) / scaleFactor
+      );
       width = Math.min(width, maxLogicalWidth);
       height = Math.min(height, maxLogicalHeight);
     }
@@ -282,8 +360,8 @@ window.addEventListener("DOMContentLoaded", async () => {
       hoverArea.classList.toggle("goal-reached", goalReached);
     }
 
-    // Liquid container total cavity height is ~159px, from Y 11 to 170
-    const targetY = 170 - (ratio * 159);
+    // Liquid level: cavity spans WATER_CAVITY_TRAVEL_PX up from the bottom
+    const targetY = WATER_CAVITY_BOTTOM_Y - ratio * WATER_CAVITY_TRAVEL_PX;
     if (liquidFillGroup) {
       liquidFillGroup.style.transform = `translateY(${targetY}px)`;
     }
@@ -331,29 +409,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (!updateUI) return;
 
     // 1. Eye color swatches
-    eyeColorGroup?.querySelectorAll(".color-swatch").forEach((btn) => {
-      const color = (btn as HTMLElement).dataset.color;
-      if (color?.toLowerCase() === settings.eyeColor.toLowerCase()) {
-        btn.classList.add("active");
-      } else {
-        btn.classList.remove("active");
-      }
-    });
-
-    const eyeCustomBtn = eyeCustomColor?.closest(".custom-color-btn");
-    const eyeMatchesPreset = Array.from(
-      eyeColorGroup?.querySelectorAll(".color-swatch") || []
-    ).some(
-      (b) => (b as HTMLElement).dataset.color?.toLowerCase() === settings.eyeColor.toLowerCase()
-    );
-    if (!eyeMatchesPreset && eyeCustomBtn) {
-      eyeCustomBtn.classList.add("active");
-    } else if (eyeCustomBtn) {
-      eyeCustomBtn.classList.remove("active");
-    }
-    if (eyeCustomColor) {
-      eyeCustomColor.value = settings.eyeColor;
-    }
+    syncColorSwatches(eyeColorGroup, eyeCustomColor, settings.eyeColor);
 
     // 2. Outline controls
     if (outlineToggle) {
@@ -372,29 +428,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
 
     // 3. Outline color swatches
-    outlineColorGroup?.querySelectorAll(".color-swatch").forEach((btn) => {
-      const color = (btn as HTMLElement).dataset.color;
-      if (color?.toLowerCase() === settings.outlineColor.toLowerCase()) {
-        btn.classList.add("active");
-      } else {
-        btn.classList.remove("active");
-      }
-    });
-
-    const outlineCustomBtn = outlineCustomColor?.closest(".custom-color-btn");
-    const outlineMatchesPreset = Array.from(
-      outlineColorGroup?.querySelectorAll(".color-swatch") || []
-    ).some(
-      (b) => (b as HTMLElement).dataset.color?.toLowerCase() === settings.outlineColor.toLowerCase()
-    );
-    if (!outlineMatchesPreset && outlineCustomBtn) {
-      outlineCustomBtn.classList.add("active");
-    } else if (outlineCustomBtn) {
-      outlineCustomBtn.classList.remove("active");
-    }
-    if (outlineCustomColor) {
-      outlineCustomColor.value = settings.outlineColor;
-    }
+    syncColorSwatches(outlineColorGroup, outlineCustomColor, settings.outlineColor);
 
     // 4. Wiggle toggle
     if (wiggleToggle) {
@@ -402,14 +436,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
 
     // 5. Blink speed segments
-    blinkSpeedControl?.querySelectorAll(".segment-btn").forEach((btn) => {
-      const speed = (btn as HTMLElement).dataset.speed;
-      if (speed === settings.blinkSpeed) {
-        btn.classList.add("active");
-      } else {
-        btn.classList.remove("active");
-      }
-    });
+    syncSegmentedControl(blinkSpeedControl, (btn) => btn.dataset.speed === settings.blinkSpeed);
 
     // 6. Water Reminder Toggle
     if (waterReminderToggle) {
@@ -444,40 +471,22 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
 
     // 8. Water Goal
-    waterGoalControl?.querySelectorAll(".segment-btn").forEach((btn) => {
-      const goal = (btn as HTMLElement).dataset.goal;
-      if (goal === settings.waterGoalPreset) {
-        btn.classList.add("active");
-      } else {
-        btn.classList.remove("active");
-      }
-    });
+    syncSegmentedControl(waterGoalControl, (btn) => btn.dataset.goal === settings.waterGoalPreset);
     if (waterCustomGoalContainer) {
       waterCustomGoalContainer.style.display = settings.waterGoalPreset === "custom" ? "flex" : "none";
     }
     if (waterCustomGoalInput) {
-      waterCustomGoalInput.value = (settings.waterGoalCustomMl || 2000).toString();
+      waterCustomGoalInput.value = (settings.waterGoalCustomMl || DEFAULT_GOAL_ML).toString();
     }
 
     // 9. Water Cup Size
-    waterCupControl?.querySelectorAll(".segment-btn").forEach((btn) => {
-      const cupVal = parseInt((btn as HTMLElement).dataset.cup || "250");
-      if (cupVal === settings.waterCupSizeMl) {
-        btn.classList.add("active");
-      } else {
-        btn.classList.remove("active");
-      }
-    });
+    syncSegmentedControl(
+      waterCupControl,
+      (btn) => btn.dataset.cup === String(settings.waterCupSizeMl)
+    );
 
-    // 10. Scale control
-    scaleControl?.querySelectorAll(".segment-btn").forEach((btn) => {
-      const s = parseFloat((btn as HTMLElement).dataset.scale || "1.0");
-      if (s === settings.scale) {
-        btn.classList.add("active");
-      } else {
-        btn.classList.remove("active");
-      }
-    });
+    // 10. Scale control (numeric compare: dataset "1.0" must match scale 1)
+    syncSegmentedControl(scaleControl, (btn) => parseFloat(btn.dataset.scale || "") === settings.scale);
 
     if (scaleValLabel) {
       scaleValLabel.textContent = `${settings.scale}x`;
@@ -500,21 +509,15 @@ window.addEventListener("DOMContentLoaded", async () => {
   WATER REMINDER & TRACKER STATE LOGIC
   */
 
-  async function showWaterAlarm() {
-    isWaterAlarm = true;
-    isWaterManual = false;
-    hoverArea?.classList.add("water-mode", "water-alarm");
-    hoverArea?.classList.remove("water-manual");
-    waterToggle?.classList.add("active");
-    updateWaterProgressDOM();
-    await updateWindowSize();
-  }
-
-  async function showWaterManual() {
-    isWaterManual = true;
-    isWaterAlarm = false;
-    hoverArea?.classList.add("water-mode", "water-manual");
-    hoverArea?.classList.remove("water-alarm");
+  /*
+  Enter the water UI in one of its two flavors: the reminder alarm or the
+  manual tracker opened via the droplet button.
+  */
+  async function showWaterMode(mode: "alarm" | "manual") {
+    isWaterAlarm = mode === "alarm";
+    isWaterManual = mode === "manual";
+    hoverArea?.classList.add("water-mode", mode === "alarm" ? "water-alarm" : "water-manual");
+    hoverArea?.classList.remove(mode === "alarm" ? "water-manual" : "water-alarm");
     waterToggle?.classList.add("active");
     updateWaterProgressDOM();
     await updateWindowSize();
@@ -537,7 +540,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (isWaterManual) {
       showEyeMode();
     } else {
-      showWaterManual();
+      showWaterMode("manual");
     }
   }
 
@@ -551,6 +554,17 @@ window.addEventListener("DOMContentLoaded", async () => {
     updateWaterProgressDOM();
     // Re-evaluate the reminder: reaching the norm cancels it, dropping below re-arms it
     resetWaterReminderTimer();
+  }
+
+  /*
+  Log intake, then give the user a moment to see the level rise before the
+  alarm UI closes itself. Safe outside alarm mode too: dismissal no-ops.
+  */
+  function logWaterIntakeAndDismiss(amountMl: number) {
+    logWaterIntake(amountMl);
+    if (isWaterAlarm) {
+      setTimeout(dismissWaterAlarm, DISMISS_AFTER_LOG_MS);
+    }
   }
 
   function dismissWaterAlarm() {
@@ -575,7 +589,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     const ms = Math.max(1, settings.waterIntervalMinutes) * 60 * 1000;
     waterReminderTimeout = setTimeout(() => {
       if (settings.waterReminderEnabled && !isSettingsOpen && !isWaterGoalReached()) {
-        showWaterAlarm();
+        showWaterMode("alarm");
       } else {
         resetWaterReminderTimer();
       }
@@ -595,7 +609,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   Polling (instead of a one-shot midnight timeout) also survives sleep/wake,
   manual clock changes and DST shifts.
   */
-  const DAY_CHECK_INTERVAL_MS = 30 * 1000;
   let lastKnownDay = getTodayDateString();
 
   setInterval(() => {
@@ -632,19 +645,14 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   waterOneCupBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
-    logWaterIntake(settings.waterCupSizeMl);
-    setTimeout(() => {
-      dismissWaterAlarm();
-    }, 850);
+    logWaterIntakeAndDismiss(settings.waterCupSizeMl);
   });
 
   waterDropletSvg?.addEventListener("click", (e) => {
     e.stopPropagation();
+    // Only the alarm flavor reacts to droplet clicks; manual mode uses +/- buttons
     if (isWaterAlarm) {
-      logWaterIntake(settings.waterCupSizeMl);
-      setTimeout(() => {
-        dismissWaterAlarm();
-      }, 850);
+      logWaterIntakeAndDismiss(settings.waterCupSizeMl);
     }
   });
 
@@ -657,11 +665,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       const amount = parseInt((btn as HTMLElement).dataset.amount || "250");
-      logWaterIntake(amount);
+      logWaterIntakeAndDismiss(amount);
       waterCustomPopover?.classList.remove("open");
-      if (isWaterAlarm) {
-        setTimeout(() => dismissWaterAlarm(), 850);
-      }
     });
   });
 
@@ -669,11 +674,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     e.stopPropagation();
     const amount = parseInt(waterCustomInput?.value || "250");
     if (!isNaN(amount) && amount > 0) {
-      logWaterIntake(amount);
+      logWaterIntakeAndDismiss(amount);
       waterCustomPopover?.classList.remove("open");
-      if (isWaterAlarm) {
-        setTimeout(() => dismissWaterAlarm(), 850);
-      }
     }
   });
 
@@ -693,8 +695,8 @@ window.addEventListener("DOMContentLoaded", async () => {
       toggleSettings();
     }
     setTimeout(() => {
-      showWaterAlarm();
-    }, 300);
+      showWaterMode("alarm");
+    }, TEST_ALARM_DELAY_MS);
   });
 
   waterResetTodayBtn?.addEventListener("click", (e) => {
@@ -718,7 +720,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         if (!isSettingsOpen) {
           await updateWindowSize();
         }
-      }, 280);
+      }, SETTINGS_RESIZE_DELAY_MS);
     } else {
       isSettingsOpen = true;
 
@@ -947,8 +949,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
 
     // Remember where the widget ended up so the next launch can restore it
-    // before anything is visible (Option B).
-    await saveWindowPosition();
+    // before anything is visible.
+    await saveWindowPosition(position);
   }
 
   /*
@@ -956,9 +958,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   Called after every settle point: drag end (through keepWindowOnScreen),
   the startup clamp and every resize-triggered clamp.
   */
-  async function saveWindowPosition() {
+  async function saveWindowPosition(knownPosition?: PhysicalPosition) {
     try {
-      const position = await appWindow.outerPosition();
+      const position = knownPosition ?? (await appWindow.outerPosition());
       await invoke("save_window_position", { x: position.x, y: position.y });
     } catch (e) {
       console.error("Failed to save window position", e);
@@ -988,7 +990,7 @@ window.addEventListener("DOMContentLoaded", async () => {
           checkInterval = null;
         }
       }
-    }, 40);
+    }, DRAG_MOUSE_POLL_MS);
   }
 
   appWindow.onMoved(() => {
@@ -1051,7 +1053,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     hoverArea?.classList.add("closed");
 
     await new Promise((resolve) => {
-      setTimeout(resolve, 160);
+      setTimeout(resolve, BLINK_CLOSED_MS);
     });
 
     hoverArea?.classList.remove("closed");
@@ -1089,9 +1091,9 @@ window.addEventListener("DOMContentLoaded", async () => {
       /*
         Occasionally perform a second blink shortly afterward.
       */
-      if (Math.random() < 0.2) {
+      if (Math.random() < DOUBLE_BLINK_CHANCE) {
         await new Promise((resolve) => {
-          setTimeout(resolve, randomDelay(250, 500));
+          setTimeout(resolve, randomDelay(SECOND_BLINK_MIN_MS, SECOND_BLINK_MAX_MS));
         });
 
         await blink();
@@ -1113,7 +1115,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       isWiggling = false;
     }
 
-    // Bug 3: pause water alarm wiggle while hovering so user can click buttons comfortably
+    // Pause water alarm wiggle while hovering so the user can click buttons comfortably
     if (isWaterAlarm) {
       hoverArea.classList.add("wiggle-paused");
     }

@@ -8,11 +8,8 @@
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",
-    "opener:default",
-    "core:window:allow-set-shadow",
     "core:window:allow-set-position",
     "core:window:allow-set-size",
-    "core:window:allow-show",
-    "core:window:allow-hide"
+    "core:window:allow-show"
   ]
 }
