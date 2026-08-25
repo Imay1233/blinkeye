@@ -193,19 +193,29 @@ window.addEventListener("DOMContentLoaded", async () => {
     const normalWidth = cardWidth + 60;
     const normalHeight = cardHeight + 60;
 
-    const expandedWidth = cardWidth + 480;
-    const expandedHeight = Math.max(normalHeight, 520);
+    // Settings panel (460px) + eye card + margins must fit with breathing room
+    const expandedWidth = cardWidth + 530;
+    const expandedHeight = Math.max(normalHeight, 560);
 
     return { normalWidth, normalHeight, expandedWidth, expandedHeight };
   }
 
   async function updateWindowSize() {
     const sizes = getWindowSizes(settings.scale);
-    if (isSettingsOpen) {
-      await appWindow.setSize(new LogicalSize(sizes.expandedWidth, sizes.expandedHeight));
-    } else {
-      await appWindow.setSize(new LogicalSize(sizes.normalWidth, sizes.normalHeight));
+    let width = isSettingsOpen ? sizes.expandedWidth : sizes.normalWidth;
+    let height = isSettingsOpen ? sizes.expandedHeight : sizes.normalHeight;
+
+    // Never request a window bigger than the monitor work area (small screens / high DPI)
+    const mon = await currentMonitor();
+    if (mon) {
+      const scaleFactor = mon.scaleFactor || 1;
+      const maxLogicalWidth = Math.floor((mon.workArea.size.width - 16) / scaleFactor);
+      const maxLogicalHeight = Math.floor((mon.workArea.size.height - 16) / scaleFactor);
+      width = Math.min(width, maxLogicalWidth);
+      height = Math.min(height, maxLogicalHeight);
     }
+
+    await appWindow.setSize(new LogicalSize(width, height));
     await keepWindowOnScreen();
   }
 
