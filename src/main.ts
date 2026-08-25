@@ -6,8 +6,8 @@ import {
   currentMonitor,
 } from "@tauri-apps/api/window";
 
-import { PhysicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
-import { listen } from "@tauri-apps/api/event";
+import { PhysicalPosition, LogicalSize, LogicalPosition } from "@tauri-apps/api/dpi";
+import { listen, emit } from "@tauri-apps/api/event";
 
 const appWindow = getCurrentWindow();
 
@@ -116,18 +116,25 @@ window.addEventListener("DOMContentLoaded", async () => {
   let waterState: WaterState = loadWaterState();
 
   /*
-  Get the monitor where the widget is located.
+  Position the widget before it is ever visible:
+  - If a previous session saved a position, Rust already applied it while the
+    window was still hidden (see setup in lib.rs) — nothing to do here.
+  - Otherwise (first run / cleared state), center it on the current monitor.
+  The window itself is only revealed further below, after the final position
+  AND size have been applied, so none of this can flicker.
   */
-  const monitor = await currentMonitor();
-  const screenWidth = monitor?.size.width || 0;
-  const screenHeight = monitor?.size.height || 0;
+  try {
+    const savedPosition = await invoke<{ x: number; y: number } | null>(
+      "load_window_position"
+    );
 
-  /*
-  Center the widget on the screen.
-  */
-  await appWindow.setPosition(
-    new PhysicalPosition(screenWidth / 2 - 130, screenHeight / 2 - 130)
-  );
+    if (!savedPosition) {
+      await centerWindowOnMonitor();
+    }
+  } catch (e) {
+    console.error("Failed to restore window position", e);
+    await centerWindowOnMonitor();
+  }
 
   const widget = document.getElementById("widget");
   const hoverArea = document.getElementById("hover-area");
@@ -199,6 +206,32 @@ window.addEventListener("DOMContentLoaded", async () => {
     const expandedHeight = Math.max(normalHeight, 560);
 
     return { normalWidth, normalHeight, expandedWidth, expandedHeight };
+  }
+
+  /*
+  HiDPI-safe centering (Option D). The monitor size is in physical pixels;
+  dividing by scaleFactor gives logical units, so the widget is centered
+  correctly on scaled displays (the old math mixed a hardcoded 130px logical
+  offset into physical pixel coordinates and drifted off-center).
+  Uses the real widget size for the current saved scale.
+  */
+  async function centerWindowOnMonitor() {
+    const mon = await currentMonitor();
+    if (!mon) {
+      return;
+    }
+
+    const scaleFactor = mon.scaleFactor || 1;
+    const { normalWidth, normalHeight } = getWindowSizes(settings.scale);
+
+    const logicalX = Math.round(
+      mon.size.width / scaleFactor / 2 - normalWidth / 2
+    );
+    const logicalY = Math.round(
+      mon.size.height / scaleFactor / 2 - normalHeight / 2
+    );
+
+    await appWindow.setPosition(new LogicalPosition(logicalX, logicalY));
   }
 
   async function updateWindowSize() {
@@ -451,14 +484,17 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // Initial apply
+  // Initial apply (everything up to this point ran while the window was hidden)
   applySettingsToDOM(true);
   await updateWindowSize();
 
-  // Bug 1: reveal widget now that settings are applied (avoids flash of default state)
-  requestAnimationFrame(() => {
-    widget?.classList.add("ready");
-  });
+  // Reveal: the widget fades in while the window appears directly in its
+  // final position and size — no jumping, resizing or flashing.
+  widget?.classList.add("ready");
+  await appWindow.show();
+
+  // Tell Rust the UI booted successfully (disarms the startup watchdog)
+  emit("widget://ready").catch(() => {});
 
   /*
   WATER REMINDER & TRACKER STATE LOGIC
@@ -877,6 +913,24 @@ window.addEventListener("DOMContentLoaded", async () => {
       await appWindow.setPosition(
         new PhysicalPosition(newX, newY)
       );
+    }
+
+    // Remember where the widget ended up so the next launch can restore it
+    // before anything is visible (Option B).
+    await saveWindowPosition();
+  }
+
+  /*
+  Persist the window position to disk (via save_window_position in lib.rs).
+  Called after every settle point: drag end (through keepWindowOnScreen),
+  the startup clamp and every resize-triggered clamp.
+  */
+  async function saveWindowPosition() {
+    try {
+      const position = await appWindow.outerPosition();
+      await invoke("save_window_position", { x: position.x, y: position.y });
+    } catch (e) {
+      console.error("Failed to save window position", e);
     }
   }
 

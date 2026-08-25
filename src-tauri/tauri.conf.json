@@ -23,7 +23,9 @@
         "resizable": false,
         "maximizable": false,
         "minimizable": false,
-        "fullscreen": false
+        "fullscreen": false,
+
+        "visible": false
       }
     ],
     "security": {
