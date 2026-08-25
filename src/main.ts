@@ -586,6 +586,37 @@ window.addEventListener("DOMContentLoaded", async () => {
   resetWaterReminderTimer();
 
   /*
+  DAY ROLLOVER
+  The water tracker already resets itself whenever it notices a stale date
+  (launch, logging a cup, any UI refresh). But if the widget sits idle across
+  midnight - no clicks, no reminder firing - nothing re-checks the date, so
+  yesterday's count would stay on screen until the next interaction.
+  Poll cheaply (every 30s) and roll the day over automatically.
+  Polling (instead of a one-shot midnight timeout) also survives sleep/wake,
+  manual clock changes and DST shifts.
+  */
+  const DAY_CHECK_INTERVAL_MS = 30 * 1000;
+  let lastKnownDay = getTodayDateString();
+
+  setInterval(() => {
+    const now = getTodayDateString();
+
+    if (now === lastKnownDay) {
+      return;
+    }
+
+    lastKnownDay = now;
+
+    // New day detected: start a fresh water count
+    waterState = { date: now, currentMl: 0 };
+    saveWaterState(waterState);
+    updateWaterProgressDOM();
+
+    // Restart the reminder cadence for the new day
+    resetWaterReminderTimer();
+  }, DAY_CHECK_INTERVAL_MS);
+
+  /*
   WATER EVENT HANDLERS
   */
 
