@@ -120,6 +120,13 @@
             <path class="droplet-outer-shell" d="M71.79 0C71.79 0 143.581 63.4346 143.581 114.115C143.581 164.796 100.573 180 71.79 180C43.0076 180 -0.000178537 163.118 3.55897e-08 114.115C0.000312428 65.1567 71.6615 0.116591 71.79 0Z" mask="url(#droplet-ring-mask)" />
           </svg>
 
+          <!-- Daily norm reached badge -->
+          <div class="goal-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5 12.5L10 17.5L19 7.5" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </div>
+
           <!-- Manual / Status Info Bar -->
           <div id="water-manual-bar" class="water-manual-bar">
             <button type="button" id="water-minus-btn" class="water-ctrl-btn" title="Undo / Subtract 1 Cup">−</button>
@@ -189,6 +196,20 @@
                   <span class="custom-color-indicator" id="outline-custom-indicator"></span>
                 </label>
               </div>
+            </div>
+          </div>
+
+          <!-- Eye Group -->
+          <div class="settings-group">
+            <div class="setting-row-split">
+              <div class="setting-toggle-item">
+                <span class="setting-label">Eye</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="eye-toggle" checked />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <span class="setting-sublabel">Off = tray only</span>
             </div>
           </div>
 

@@ -679,6 +679,82 @@ WATER DROPLET WRAPPER & ELEMENTS
   display: flex;
 }
 
+/* Eye disabled: water-tracker-only mode (app lives in the tray) */
+#hover-area.eye-hidden #eye-open,
+#hover-area.eye-hidden #eye-closed {
+  display: none !important;
+}
+
+#hover-area.eye-hidden .water-drop-wrapper {
+  display: flex;
+}
+
+#hover-area.eye-hidden .water-manual-bar {
+  display: flex;
+}
+
+#hover-area.eye-hidden.water-alarm .water-manual-bar {
+  display: none;
+}
+
+/* Daily norm reached: success fill + glow pulse + check badge */
+.goal-reached .liquid-wave-path {
+  fill: #34d399;
+  opacity: 1;
+}
+
+#hover-area.goal-reached .water-droplet-svg {
+  animation: goal-glow 2.2s ease-in-out infinite;
+}
+
+@keyframes goal-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 4px rgba(52, 211, 153, 0.35));
+  }
+
+  50% {
+    filter: drop-shadow(0 0 12px rgba(52, 211, 153, 0.8));
+  }
+}
+
+.goal-badge {
+  position: absolute;
+  top: 10px;
+  right: 18px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #10b981;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  color: #ffffff;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 35;
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.5);
+}
+
+#hover-area.goal-reached .goal-badge {
+  display: flex;
+  animation: goal-badge-pop 400ms cubic-bezier(0.34, 1.56, 0.64, 1) 1;
+}
+
+.goal-badge svg {
+  width: 14px;
+  height: 14px;
+}
+
+@keyframes goal-badge-pop {
+  0% {
+    transform: scale(0);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
 .water-droplet-svg {
   display: block;
   width: 100%;

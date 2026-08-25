@@ -7,6 +7,7 @@ import {
 } from "@tauri-apps/api/window";
 
 import { PhysicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
+import { listen } from "@tauri-apps/api/event";
 
 const appWindow = getCurrentWindow();
 
@@ -15,6 +16,7 @@ interface AppSettings {
   outlineColor: string;
   outlineEnabled: boolean;
   matchOutlineColor: boolean;
+  eyeEnabled: boolean;
   wiggleEnabled: boolean;
   blinkSpeed: "relaxed" | "normal" | "active";
   scale: number;
@@ -32,6 +34,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   outlineColor: "#2f2f2f",
   outlineEnabled: true,
   matchOutlineColor: false,
+  eyeEnabled: true,
   wiggleEnabled: true,
   blinkSpeed: "normal",
   scale: 1.0,
@@ -159,6 +162,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   const outlineCustomColor = document.getElementById("outline-custom-color") as HTMLInputElement;
   const outlineCustomIndicator = document.getElementById("outline-custom-indicator");
 
+  const eyeToggle = document.getElementById("eye-toggle") as HTMLInputElement;
   const wiggleToggle = document.getElementById("wiggle-toggle") as HTMLInputElement;
   const blinkSpeedControl = document.getElementById("blink-speed-control");
   const scaleControl = document.getElementById("scale-control");
@@ -226,6 +230,11 @@ window.addEventListener("DOMContentLoaded", async () => {
     await keepWindowOnScreen();
   }
 
+  // True when today intake has reached the daily norm (stale date counts as below norm)
+  function isWaterGoalReached(): boolean {
+    return waterState.date === getTodayDateString() && waterState.currentMl >= getDailyGoalMl(settings);
+  }
+
   function updateWaterProgressDOM() {
     const today = getTodayDateString();
     if (waterState.date !== today) {
@@ -237,18 +246,25 @@ window.addEventListener("DOMContentLoaded", async () => {
     const ratio = Math.min(Math.max(waterState.currentMl / goal, 0), 1);
     const percentage = Math.round(ratio * 100);
 
+    // Daily norm reached: flag it so CSS can glow the droplet and show the badge
+    const goalReached = waterState.currentMl > 0 && waterState.currentMl >= goal;
+    if (hoverArea) {
+      hoverArea.classList.toggle("goal-reached", goalReached);
+    }
+
     // Liquid container total cavity height is ~159px, from Y 11 to 170
     const targetY = 170 - (ratio * 159);
     if (liquidFillGroup) {
       liquidFillGroup.style.transform = `translateY(${targetY}px)`;
     }
 
-    const progressStr = `${waterState.currentMl} / ${goal} ml (${percentage}%)`;
+    const progressStr = goalReached ? "Goal reached!" : `${waterState.currentMl} / ${goal} ml (${percentage}%)`;
+    const statusStr = goalReached ? `Daily norm reached! (${waterState.currentMl} / ${goal} ml)` : progressStr;
     if (waterProgressText) {
       waterProgressText.textContent = progressStr;
     }
     if (waterStatusVal) {
-      waterStatusVal.textContent = progressStr;
+      waterStatusVal.textContent = statusStr;
     }
     if (waterCupBtnLabel) {
       waterCupBtnLabel.textContent = `1 CUP (${settings.waterCupSizeMl}ml)`;
@@ -436,6 +452,19 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (scaleValLabel) {
       scaleValLabel.textContent = `${settings.scale}x`;
     }
+
+    // 11. Eye enabled: water-tracker-only mode when off
+    if (widget) {
+      widget.classList.toggle("eye-hidden", !settings.eyeEnabled);
+    }
+    if (eyeToggle) {
+      eyeToggle.checked = settings.eyeEnabled;
+    }
+
+    // With the eye off the app lives in the tray: hide unless settings are open
+    if (!settings.eyeEnabled && !isSettingsOpen) {
+      void appWindow.hide();
+    }
   }
 
   // Initial apply
@@ -458,6 +487,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     hoverArea?.classList.remove("water-manual");
     waterToggle?.classList.add("active");
     updateWaterProgressDOM();
+    if (!settings.eyeEnabled) {
+      // Eye is off (app lives in the tray): pop the window up for the alarm
+      await appWindow.show();
+    }
     await updateWindowSize();
   }
 
@@ -478,6 +511,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     waterToggle?.classList.remove("active");
     waterCustomPopover?.classList.remove("open");
     await updateWindowSize();
+    if (!settings.eyeEnabled && !isSettingsOpen) {
+      // Eye is off: back to the tray
+      await appWindow.hide();
+    }
   }
 
   function toggleWaterManual() {
@@ -500,6 +537,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     waterState.currentMl = Math.max(0, waterState.currentMl + amountMl);
     saveWaterState(waterState);
     updateWaterProgressDOM();
+    // Re-evaluate the reminder: reaching the norm cancels it, dropping below re-arms it
+    resetWaterReminderTimer();
   }
 
   function dismissWaterAlarm() {
@@ -518,10 +557,12 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
 
     if (!settings.waterReminderEnabled) return;
+    // Daily norm reached: no more reminders for the rest of the day
+    if (isWaterGoalReached()) return;
 
     const ms = Math.max(1, settings.waterIntervalMinutes) * 60 * 1000;
     waterReminderTimeout = setTimeout(() => {
-      if (settings.waterReminderEnabled && !isSettingsOpen) {
+      if (settings.waterReminderEnabled && !isSettingsOpen && !isWaterGoalReached()) {
         showWaterAlarm();
       } else {
         resetWaterReminderTimer();
@@ -618,6 +659,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     waterState.currentMl = 0;
     saveWaterState(waterState);
     updateWaterProgressDOM();
+    resetWaterReminderTimer();
   });
 
   /*
@@ -632,6 +674,10 @@ window.addEventListener("DOMContentLoaded", async () => {
       setTimeout(async () => {
         if (!isSettingsOpen) {
           await updateWindowSize();
+          if (!settings.eyeEnabled) {
+            // Eye is off: return to the tray after closing settings
+            await appWindow.hide();
+          }
         }
       }, 280);
     } else {
@@ -670,6 +716,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   eyeCustomColor?.addEventListener("input", (e) => {
     const val = (e.target as HTMLInputElement).value;
     settings.eyeColor = val;
+    saveSettings(settings);
+    applySettingsToDOM(true);
+  });
+
+  // Eye toggle (off = water-tracker-only; the app lives in the system tray)
+  eyeToggle?.addEventListener("change", (e) => {
+    settings.eyeEnabled = (e.target as HTMLInputElement).checked;
     saveSettings(settings);
     applySettingsToDOM(true);
   });
@@ -801,6 +854,22 @@ window.addEventListener("DOMContentLoaded", async () => {
         applySettingsToDOM(true);
         await updateWindowSize();
       }
+    }
+  });
+
+  /*
+  SYSTEM TRAY EVENTS (eye off = tray-only mode)
+  */
+  listen("tray://shown", () => {
+    // Window shown from the tray: with the eye off, present the water tracker
+    if (!settings.eyeEnabled) {
+      showWaterManual();
+    }
+  });
+
+  listen("tray://settings", async () => {
+    if (!isSettingsOpen) {
+      await toggleSettings();
     }
   });
 
