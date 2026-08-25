@@ -681,12 +681,7 @@ WATER DROPLET WRAPPER & ELEMENTS
 
 .droplet-outer-shell {
   fill: var(--eye-outline-color);
-  stroke: var(--eye-outline-color);
-  stroke-width: var(--eye-outline-width);
-  stroke-linejoin: round;
-  stroke-linecap: round;
-  paint-order: stroke fill;
-  transition: fill 150ms ease, stroke 150ms ease, stroke-width 150ms ease;
+  transition: fill 150ms ease;
 }
 
 .droplet-bg {

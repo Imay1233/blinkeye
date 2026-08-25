@@ -98,6 +98,11 @@
               <clipPath id="droplet-inner-clip">
                 <path d="M61.5 159C36.8433 159 -0.000152976 144.087 0 100.802C0.000152977 57.5164 61.5 0 61.5 0C61.5 0 123 56.034 123 100.802C123 145.57 86.1567 159 61.5 159Z" transform="translate(10.5, 10.5)" />
               </clipPath>
+              <!-- Even-gap ring mask: cuts the inner-droplet shape, widened by a 3px gap (centered 6px round-joined stroke), out of the outer shell so the transparent gap is identical all the way around -->
+              <mask id="droplet-ring-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="144" height="180">
+                <rect x="0" y="0" width="144" height="180" fill="white" />
+                <path d="M61.5 159C36.8433 159 -0.000152976 144.087 0 100.802C0.000152977 57.5164 61.5 0 61.5 0C61.5 0 123 56.034 123 100.802C123 145.57 86.1567 159 61.5 159Z" transform="translate(10.5, 10.5)" fill="black" stroke="black" stroke-width="6" stroke-linejoin="round" />
+              </mask>
             </defs>
 
             <!-- Background unfilled reservoir -->
@@ -112,7 +117,8 @@
             </g>
 
             <!-- Droplet Outer Shell -->
-            <path class="droplet-outer-shell" d="M71.79 0C71.79 0 143.581 63.4346 143.581 114.115C143.581 164.796 100.573 180 71.79 180C43.0076 180 -0.000178537 163.118 3.55897e-08 114.115C0.000312428 65.1567 71.6615 0.116591 71.79 0ZM71.79 9C71.6682 9.11338 6.83708 69.4533 6.83691 114.874C6.83693 160.337 45.7488 176 71.79 176C97.8313 176 136.744 161.894 136.744 114.874C136.744 67.8536 71.79 9 71.79 9Z" />
+            <!-- Droplet Outer Shell (solid shape; the ring hole + even 3px gap come from droplet-ring-mask) -->
+            <path class="droplet-outer-shell" d="M71.79 0C71.79 0 143.581 63.4346 143.581 114.115C143.581 164.796 100.573 180 71.79 180C43.0076 180 -0.000178537 163.118 3.55897e-08 114.115C0.000312428 65.1567 71.6615 0.116591 71.79 0Z" mask="url(#droplet-ring-mask)" />
           </svg>
 
           <!-- Manual / Status Info Bar -->
