@@ -22,7 +22,7 @@ interface AppSettings {
 
   // Water Tracker Settings
   waterReminderEnabled: boolean;
-  waterIntervalMinutes: number; // e.g. 15, 30, 45, 60 or custom
+  waterIntervalMinutes: number;
   waterGoalPreset: "standard" | "active" | "athlete" | "custom";
   waterGoalCustomMl: number;
   waterCupSizeMl: number;
@@ -76,7 +76,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   scale: 1.0,
 
   waterReminderEnabled: true,
-  waterIntervalMinutes: 30,
+  waterIntervalMinutes: 60,
   waterGoalPreset: "standard",
   waterGoalCustomMl: DEFAULT_GOAL_ML,
   waterCupSizeMl: 250,
@@ -242,7 +242,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   const outlineCustomColor = document.getElementById("outline-custom-color") as HTMLInputElement;
   const outlineCustomIndicator = document.getElementById("outline-custom-indicator");
 
- const wiggleToggle = document.getElementById("wiggle-toggle") as HTMLInputElement;
+  const wiggleToggle = document.getElementById("wiggle-toggle") as HTMLInputElement;
   const blinkSpeedControl = document.getElementById("blink-speed-control");
   const scaleControl = document.getElementById("scale-control");
   const scaleValLabel = document.getElementById("scale-val-label");
@@ -503,7 +503,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   await appWindow.show();
 
   // Tell Rust the UI booted successfully (disarms the startup watchdog)
-  emit("widget://ready").catch(() => {});
+  emit("widget://ready").catch(() => { });
 
   /*
   WATER REMINDER & TRACKER STATE LOGIC
