@@ -1001,7 +1001,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   DRAGGING
   */
 
-  widget?.addEventListener("mousedown", async (event) => {
+  hoverArea?.addEventListener("mousedown", async (event) => {
     if ((event.target as HTMLElement)?.closest("#settings-toggle, #water-toggle, #settings-panel, #water-action-bar, #water-manual-bar")) {
       return;
     }

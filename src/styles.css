@@ -33,6 +33,7 @@ body {
      (prevents a flash of default-styled content on launch) */
   opacity: 0;
   transition: opacity 200ms ease;
+  pointer-events: none;
 }
 
 #widget.ready {
@@ -50,6 +51,7 @@ body {
 
   box-shadow: none;
   flex-shrink: 0;
+  pointer-events: auto;
 
   transition:
     background 200ms ease,
